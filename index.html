@@ -190,6 +190,7 @@
       <div class="ctl">
         <label class="slider">Friction <input id="fric" type="range" min="0" max="0.3" step="0.01" value="0"><output id="fricOut">None</output></label>
         <label class="slider">Skater mass <input id="mass" type="range" min="20" max="100" step="5" value="60"><output id="massOut">60 kg</output></label>
+        <label class="slider">Head size <input id="head" type="range" min="0.6" max="2" step="0.1" value="1"><output id="headOut">100%</output></label>
       </div>
       <div class="ctl">
         <button id="playBtn">Pause</button>
@@ -199,6 +200,7 @@
         <button id="markBtn" aria-pressed="false">Show height markers</button>
         <button id="lineBtn" aria-pressed="false">Show climb line</button>
         <button id="chBtn" aria-pressed="false">Challenge mode</button>
+        <button id="rampBtn" aria-pressed="false" hidden>Show ramp behind ball</button>
       </div>
     </div>
   </section>
@@ -418,7 +420,7 @@ if (typeof module !== 'undefined') module.exports = Physics;
   const P = { m: 60, g: 9.8, mu: 0 };
   let gravKey = 'earth', track = Physics.createTrack('half');
   const S = Physics.newState();
-  let paused = false, slow = false, dragging = false, showLine = false, showMarks = false, graphMode = 'pos';
+  let paused = false, slow = false, dragging = false, showLine = false, showMarks = false, showRamp = false, headScale = 1, graphMode = 'pos';
   let lastRelease = null, firstContactX = null, crash = null, hint = true, toast = null, dragOff = { x: 0, y: 0 }, lastPhrase = -1, airT = 0;
   let apex = { x: 0, h: 0 }, hist = [], tHist = [], acc = 0, lastTs = 0, won = false, confetti = [];
 
@@ -613,11 +615,13 @@ if (typeof module !== 'undefined') module.exports = Physics;
     $('playBtn').textContent = paused ? 'Play' : 'Pause';
     $('slowBtn').setAttribute('aria-pressed', slow); $('lineBtn').setAttribute('aria-pressed', showLine); $('markBtn').setAttribute('aria-pressed', showMarks);
     $('chBtn').setAttribute('aria-pressed', chOn);
+    $('rampBtn').hidden = track.key !== 'pendulum'; $('rampBtn').setAttribute('aria-pressed', showRamp);
   }
 
   // ---------- controls ----------
   $('trackSeg').addEventListener('click', e => { const b = e.target.closest('[data-track]'); if (!b) return; chOn = false; $('challenge').hidden = true; setTrack(b.dataset.track); syncUI(); });
   $('gravSeg').addEventListener('click', e => { const b = e.target.closest('[data-grav]'); if (!b) return; setGrav(b.dataset.grav); syncUI(); });
+  $('head').addEventListener('input', e => { headScale = +e.target.value; $('headOut').textContent = Math.round(headScale * 100) + '%'; });
   $('fric').addEventListener('input', e => { P.mu = +e.target.value; syncUI(); });
   $('mass').addEventListener('input', e => { P.m = +e.target.value; syncUI(); replay(); });
   $('playBtn').addEventListener('click', () => { paused = !paused; syncUI(); });
@@ -626,6 +630,7 @@ if (typeof module !== 'undefined') module.exports = Physics;
   $('parkBtn').addEventListener('click', () => parkSkater());
   $('lineBtn').addEventListener('click', () => { showLine = !showLine; syncUI(); });
   $('markBtn').addEventListener('click', () => { showMarks = !showMarks; syncUI(); });
+  $('rampBtn').addEventListener('click', () => { showRamp = !showRamp; syncUI(); });
   $('chBtn').addEventListener('click', () => {
     chOn = !chOn; $('challenge').hidden = !chOn;
     if (chOn) applyLevel(); else syncUI();
@@ -780,7 +785,7 @@ if (typeof module !== 'undefined') module.exports = Physics;
     rr(ctx, -0.36 * wf * u, -1.75 * u, 0.72 * wf * u, 0.9 * u, Math.min(0.2, 0.3 * wf) * u); ctx.fill(); ctx.stroke();
     ctx.restore();
     // head stays mostly upright so the face is easy to see
-    const hr = 0.72 * u, hd = 2.35 * u, hx = px - hd * sinT, hy = py - hd * cosT;
+    const hr = 0.72 * u * headScale, hd = 1.63 * u + hr, hx = px - hd * sinT, hy = py - hd * cosT;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(-th * 0.3);
     ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(avatar, -hr, -hr, 2 * hr, 2 * hr); ctx.restore();
@@ -827,7 +832,8 @@ if (typeof module !== 'undefined') module.exports = Physics;
     const hx = px + dx * (r + 1.5 * u), hy = py + dy * (r + 1.5 * u);
     thick(ctx, px - 0.3 * wf * u, shY, hx - 0.1 * u, hy, (0.15 + 0.07 * wf) * u, '#F2C09A', ol);
     thick(ctx, px + 0.3 * wf * u, shY, hx + 0.1 * u, hy, (0.15 + 0.07 * wf) * u, '#F2C09A', ol);
-    drawHead(ctx, px, hipY - 1.0 * u - 0.5 * u, 0.7 * u, -Math.atan(track.sAt(S.x)) * 0.2, u);
+    const hr = 0.7 * u * headScale;
+    drawHead(ctx, px, hipY - 0.8 * u - hr, hr, -Math.atan(track.sAt(S.x)) * 0.2, u);
   }
 
   // speech bubble with a tail pointing at (ax, ay)
@@ -847,6 +853,20 @@ if (typeof module !== 'undefined') module.exports = Physics;
     ctx.restore();
   }
 
+  // The curved ramp a ball on a rope follows. The ball's centre stays 10 m from the pivot, so a bowl-shaped ramp
+  // just outside that circle (one ball-radius further) is the same path a skater would ride.
+  function drawPendRamp(ctx, v, sky) {
+    const { X, Y } = v, R = 10 + 0.95, a = 75 * Math.PI / 180, N = 90, gyl = Y(-1.1), pts = [];
+    for (let i = 0; i <= N; i++) { const f = -a + 2 * a * i / N; pts.push([X(R * Math.sin(f)), Y(10 - R * Math.cos(f))]); }
+    ctx.beginPath(); ctx.moveTo(pts[0][0], gyl); pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(pts[N][0], gyl); ctx.closePath();
+    ctx.fillStyle = sky.ramp; ctx.fill();
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+    ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#1B1E24'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.stroke();
+    ctx.strokeStyle = '#1B1E24'; ctx.lineWidth = 4; ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[0][0], gyl); ctx.moveTo(pts[N][0], pts[N][1]); ctx.lineTo(pts[N][0], gyl); ctx.stroke();
+  }
+
   function drawPark() {
     const { ctx } = park, v = view(), { W, H, sc, X, Y } = v, sky = SKY[gravKey];
     if (!W) return;
@@ -860,7 +880,7 @@ if (typeof module !== 'undefined') module.exports = Physics;
       if (m % 2 === 0 && m > 0) { ctx.fillStyle = gravKey === 'moon' ? '#cfd6e6' : 'rgba(20,23,28,.7)'; ctx.fillText(m + ' m', 6, y - 8); }
     }
     const pend = track.key === 'pendulum';
-    if (pend) drawPendScenery(ctx, v, sky); else {
+    if (pend) { drawPendScenery(ctx, v, sky); if (showRamp) drawPendRamp(ctx, v, sky); } else {
     // park floor (height 0 m)
     ctx.fillStyle = sky.ground; ctx.fillRect(0, Y(0), W, H - Y(0));
     ctx.strokeStyle = 'rgba(20,23,28,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke();
@@ -922,10 +942,15 @@ if (typeof module !== 'undefined') module.exports = Physics;
     else if (crash) drawSkater(ctx, X(sp0.x), Y(0) - 0.9 * u0, sp0.th, u0);   // lying on the floor
     else drawSkater(ctx, X(sp0.x), Y(sp0.y), sp0.th, u0);
     // speech bubbles
-    if (crash && now < crash.until) drawBubble(ctx, crash.text, X(sp0.x) - 2.35 * u0 * Math.sin(crash.lie), Y(0) - 2.2 * u0, W, '#FFF7C2');
+    if (crash && now < crash.until) drawBubble(ctx, crash.text, X(sp0.x) - (1.63 * u0 + 0.72 * u0 * headScale) * Math.sin(crash.lie), Y(0) - (1.5 + 0.72 * headScale) * u0, W, '#FFF7C2');
     else if (hint && !dragging && !won) {
-      if (pend) drawBubble(ctx, 'Drag the ball back and let go!', X(S.x), Y(track.hAt(S.x)) - sc * 2.6, W, '#D9ECFF');
-      else if (S.mode === 'floor') drawBubble(ctx, 'Drag me onto the ramp, or drop me from above!', X(sp0.x), Y(0) - 2.75 * u0, W, '#D9ECFF');
+      if (pend) drawBubble(ctx, 'Drag the ball back and let go!', X(S.x), Y(track.hAt(S.x)) - sc * (1.65 + 0.98 * headScale), W, '#D9ECFF');
+      else if (S.mode === 'floor') drawBubble(ctx, 'Drag me onto the ramp, or drop me from above!', X(sp0.x), Y(0) - (1.78 + 1.44 * headScale) * u0, W, '#D9ECFF');
+    }
+    if (pend && showRamp) {
+      ctx.save(); ctx.font = FONT(800, 13); const cap = 'Same idea: the ball follows a curved ramp. The energy works the same way.', cw = ctx.measureText(cap).width + 22;
+      ctx.fillStyle = '#fff'; rr(ctx, 10, 10, Math.min(cw, W - 150), 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(cap, 21, 25); ctx.restore();
     }
     if (toast && now < toast.until) {
       ctx.save(); ctx.font = FONT(800, 13); const tw = ctx.measureText(toast.text).width + 22; ctx.fillStyle = '#fff'; rr(ctx, 10, H - 46, Math.min(tw, W - 20), 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
