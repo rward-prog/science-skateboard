@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skate Park Energy Lab</title>
+<style>
+  :root{
+    --ink:#14171C; --sun:#FFE066; --paper:#FFFFFF;
+    --ke:#1FB36B; --pe:#2F6FED; --th:#FF6A2B; --tot:#3B4252;
+    --display:"Marker Felt","Chalkboard SE","Trebuchet MS",system-ui,sans-serif;
+    --body:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--sun); color:var(--ink); font-family:var(--body);
+    display:flex; flex-direction:column; min-height:100dvh;
+    -webkit-text-size-adjust:100%;
+  }
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:10px 16px 6px;
+  }
+  .brand{display:flex; flex-direction:column; line-height:1.1}
+  .brand h1{font-family:var(--display); font-size:clamp(22px,3.2vw,32px); margin:0; letter-spacing:.2px}
+  .brand .sub{font-size:12px; font-weight:600}
+  .brand .sub a{color:var(--ink)}
+  main{
+    flex:1; min-height:0; display:grid; gap:14px; padding:6px 16px 16px;
+    grid-template-columns:minmax(0,1.75fr) minmax(280px,1fr);
+  }
+  .panel{
+    background:var(--paper); border:3px solid var(--ink); border-radius:16px;
+    box-shadow:5px 5px 0 var(--ink); min-width:0;
+  }
+  .stage{display:flex; flex-direction:column; overflow:hidden; min-height:0}
+  .parkWrap{position:relative; flex:1; min-height:340px}
+  canvas{display:block; width:100%; height:100%}
+  #park{touch-action:none; cursor:default; border-radius:13px 13px 0 0}
+  .controls{
+    border-top:3px solid var(--ink); padding:10px 12px; display:flex; flex-direction:column; gap:8px;
+    background:#F4F6F8;
+  }
+  .ctl{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center}
+  .grp{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .lab{font-weight:800; font-size:14px}
+  .seg{display:inline-flex; gap:6px; flex-wrap:wrap}
+  button{
+    font:inherit; font-weight:700; font-size:14px; color:var(--ink);
+    background:var(--paper); border:2.5px solid var(--ink); border-radius:10px;
+    padding:8px 12px; min-height:42px; cursor:pointer;
+  }
+  button:hover{background:#FFF3B8}
+  button[aria-pressed="true"]{background:var(--ink); color:#fff}
+  button:disabled{opacity:.45; cursor:not-allowed}
+  button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--pe); outline-offset:2px}
+  button.big{font-size:18px; padding:12px 20px; background:var(--th); color:#fff; border-color:var(--ink)}
+  button.big:hover{background:#ff7d45}
+  .slider{display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px}
+  .slider input[type=range]{width:150px; accent-color:var(--ink); height:32px}
+  .slider output{min-width:64px; font-weight:700; font-size:14px}
+  .side{display:flex; flex-direction:column; gap:14px; min-height:0}
+  .barsPanel{flex:0 0 42%; min-height:230px; display:flex; flex-direction:column; padding:8px 10px 6px}
+  .graphPanel{flex:1; min-height:240px; display:flex; flex-direction:column; padding:8px 10px 6px}
+  .panel h2{font-family:var(--display); font-size:19px; margin:0 0 4px}
+  .graphHead{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap}
+  .graphHead button{min-height:36px; padding:5px 10px; font-size:13px}
+  .cwrap{position:relative; flex:1; min-height:0}
+  .skaterBtn{display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border-radius:999px}
+  .skaterBtn canvas{width:40px; height:40px; border-radius:50%; border:2px solid var(--ink); background:#fff}
+
+  .card{
+    background:var(--paper); border:3px solid var(--ink); border-radius:14px; box-shadow:4px 4px 0 var(--ink);
+    padding:12px 14px;
+  }
+  .chCard{position:absolute; left:12px; top:12px; max-width:min(340px,70%); font-size:14px; line-height:1.35}
+  .chCard strong{font-family:var(--display); font-size:17px}
+  .chCard p{margin:6px 0}
+  .chCard .row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+  .chCard .row button{min-height:36px; padding:4px 10px; font-size:13px}
+  #chStatus{font-weight:800}
+  #chStatus.win{color:var(--ke)}
+
+  .overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,23,28,.45); padding:16px; border-radius:13px 13px 0 0;
+  }
+  .overlay[hidden], .modal[hidden], [hidden]{display:none !important}
+  .welcome{max-width:460px; text-align:center}
+  .welcome h2{font-family:var(--display); font-size:26px; margin:0 0 6px}
+  .welcome p{margin:0 0 12px; font-size:15px}
+  .welcome .opts{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .welcome .opts button{min-height:48px}
+  .welcome .opts .wide{grid-column:1 / -1}
+  .tiny{font-size:12px; margin-top:10px !important; opacity:.85}
+
+  .modal{
+    position:fixed; inset:0; background:rgba(20,23,28,.6); display:flex; align-items:center; justify-content:center;
+    padding:16px; z-index:20;
+  }
+  .modalCard{width:min(420px,100%); text-align:center; max-height:100%; overflow:auto}
+  .modalCard h2{font-family:var(--display); font-size:24px; margin:0 0 8px}
+  .camBox{
+    position:relative; width:min(300px,70vw); aspect-ratio:1/1; margin:0 auto 8px;
+    border:3px solid var(--ink); border-radius:16px; overflow:hidden; background:#000;
+  }
+  .camBox video{width:100%; height:100%; object-fit:cover; transform:scaleX(-1)}
+  .guide{
+    position:absolute; left:10%; top:10%; width:80%; height:80%; border-radius:50%;
+    border:3px dashed #fff; box-shadow:0 0 0 999px rgba(0,0,0,.45); pointer-events:none;
+  }
+  #adj{width:min(300px,70vw); height:min(300px,70vw); border:3px solid var(--ink); border-radius:16px; background:#ddd; touch-action:none; margin:0 auto 8px; cursor:grab}
+  .row{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px}
+  .note{margin:6px 0; font-size:14px}
+  .privacy{font-size:12px; margin:12px 0 0; opacity:.85}
+  #camError{margin-top:8px; font-size:14px}
+
+  @media (max-width: 900px){
+    main{grid-template-columns:1fr}
+    .parkWrap{min-height:360px}
+    .barsPanel{flex:none; height:260px}
+    .graphPanel{flex:none; height:300px}
+  }
+  @media (min-width: 901px){
+    body{height:100dvh; overflow:hidden}
+  }
+  @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Skate Park Energy Lab</h1>
+    <span class="sub"><a href="https://mr-ward-tools.netlify.app/">Back to Mr. Ward's Tools</a> &nbsp;|&nbsp; Inspired by the PhET Energy Skate Park</span>
+  </div>
+  <button id="skaterBtn" class="skaterBtn" aria-label="Change my skater"><canvas id="thumb" width="80" height="80"></canvas><span>My skater</span></button>
+</header>
+
+<main>
+  <section class="panel stage">
+    <div class="parkWrap">
+      <canvas id="park" aria-label="Skate park. Press and drag on the track to place the skater."></canvas>
+
+      <div id="challenge" class="card chCard" hidden>
+        <strong id="chTitle">Challenge 1 of 4</strong>
+        <p id="chText"></p>
+        <p id="chStatus"></p>
+        <div class="row">
+          <button id="chPrev">Back</button>
+          <button id="chNext">Next</button>
+        </div>
+      </div>
+
+      <div id="welcome" class="overlay">
+        <div class="card welcome">
+          <h2>Put your face on the skater!</h2>
+          <p>Take a photo, pick one from your photos, or use a character.</p>
+          <div class="opts">
+            <button id="wCam" class="big wide">Take my photo</button>
+            <button id="wPick">Choose a photo</button>
+            <button id="wDog">Use Murphy</button>
+            <button id="wCartoon">Use a cartoon</button>
+            <button id="wSkip">Skip for now</button>
+          </div>
+          <p class="tiny">Your photo stays on this device. It is not saved or sent anywhere, and it disappears when you close the page.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <div class="grp"><span class="lab">Track</span>
+          <div class="seg" id="trackSeg">
+            <button data-track="half" aria-pressed="true">Half-pipe</button>
+            <button data-track="coaster" aria-pressed="false">Roller coaster</button>
+            <button data-track="pendulum" aria-pressed="false">Wrecking ball</button>
+            <button disabled title="Coming soon">Design your own (soon)</button>
+          </div>
+        </div>
+        <div class="grp"><span class="lab">Gravity</span>
+          <div class="seg" id="gravSeg">
+            <button data-grav="earth" aria-pressed="true">Earth</button>
+            <button data-grav="moon" aria-pressed="false">Moon</button>
+            <button data-grav="jupiter" aria-pressed="false">Jupiter</button>
+          </div>
+        </div>
+      </div>
+      <div class="ctl">
+        <label class="slider">Friction <input id="fric" type="range" min="0" max="0.3" step="0.01" value="0"><output id="fricOut">None</output></label>
+        <label class="slider">Skater mass <input id="mass" type="range" min="20" max="100" step="5" value="60"><output id="massOut">60 kg</output></label>
+      </div>
+      <div class="ctl">
+        <button id="playBtn">Pause</button>
+        <button id="slowBtn" aria-pressed="false">Slow motion</button>
+        <button id="resetBtn">Try again</button>
+        <button id="parkBtn">Put skater back</button>
+        <button id="markBtn" aria-pressed="false">Show height markers</button>
+        <button id="lineBtn" aria-pressed="false">Show climb line</button>
+        <button id="chBtn" aria-pressed="false">Challenge mode</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="side">
+    <div class="panel barsPanel">
+      <h2>Energy</h2>
+      <div class="cwrap"><canvas id="bars" aria-label="Energy bar graph"></canvas></div>
+    </div>
+    <div class="panel graphPanel">
+      <div class="graphHead">
+        <h2>Energy graph</h2>
+        <div class="seg" id="graphTabs">
+          <button data-g="pos" aria-pressed="true">By position</button>
+          <button data-g="time" aria-pressed="false">Over time</button>
+        </div>
+      </div>
+      <div class="cwrap"><canvas id="graph" aria-label="Energy graph"></canvas></div>
+    </div>
+  </section>
+</main>
+
+<!-- Photo modal -->
+<div id="photoModal" class="modal" hidden>
+  <div class="card modalCard">
+    <div id="camStep">
+      <h2>Take your photo</h2>
+      <div class="camBox"><video id="cam" playsinline muted autoplay></video><div class="guide"></div></div>
+      <p class="note">Line up your face inside the circle.</p>
+      <div class="row">
+        <button id="snapBtn" class="big">Snap!</button>
+        <button id="camCancel">Cancel</button>
+      </div>
+      <div id="camError" hidden>
+        <p id="camErrorText"></p>
+        <button id="camFallback">Choose a photo instead</button>
+      </div>
+    </div>
+    <div id="adjStep" hidden>
+      <h2>Center your face</h2>
+      <canvas id="adj" width="300" height="300"></canvas>
+      <label class="slider" style="justify-content:center">Zoom <input id="zoom" type="range" min="1" max="3" step="0.05" value="1.25"></label>
+      <p class="note">Drag the picture to line up your face in the circle.</p>
+      <div class="row">
+        <button id="useBtn" class="big">Use this photo</button>
+        <button id="retakeBtn">Retake</button>
+        <button id="adjCancel">Cancel</button>
+      </div>
+    </div>
+    <p class="privacy">Your photo stays on this device. It is not saved or sent anywhere, and it disappears when you close the page.</p>
+  </div>
+</div>
+<input id="file" type="file" accept="image/*" hidden>
+
+<!-- ========== PHYSICS (no DOM) ========== -->
+<script id="physics">
+const Physics = (() => {
+  const DX = 0.01;
+  const FENCE = 14.2;
+  const GRAV = { earth: 9.8, moon: 1.6, jupiter: 24.8 };
+
+  function hermite(pts) {
+    // smooth track through points, flat (zero slope) at every point
+    return x => {
+      let i = 0;
+      while (i < pts.length - 2 && x > pts[i + 1][0]) i++;
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const t = Math.min(1, Math.max(0, (x - x0) / (x1 - x0)));
+      return y0 + (y1 - y0) * (3 * t * t - 2 * t * t * t);
+    };
+  }
+
+  const DEFS = {
+    half:    { label: 'Half-pipe',      xmin: -8.5, xmax: 8.5, f: x => 0.1 * x * x, startX: -6 },
+    coaster: { label: 'Roller coaster', xmin: -11,  xmax: 11,
+               f: hermite([[-11, 8.5], [-5, 0], [1, 5.5], [6, 0.6], [11, 8.5]]), startX: -10 },
+    // wrecking ball: a swing on a 10 m rope is the same as sliding on a circular arc (max swing 75 degrees)
+    pendulum:{ label: 'Wrecking ball',  xmin: -9.659, xmax: 9.659, f: x => 10 - Math.sqrt(100 - x * x), startX: -7.07 }
+  };
+
+  function createTrack(key) {
+    const d = DEFS[key];
+    const n = Math.round((d.xmax - d.xmin) / DX) + 1;
+    const ys = new Float64Array(n), sl = new Float64Array(n);
+    for (let i = 0; i < n; i++) ys[i] = d.f(d.xmin + i * DX);
+    for (let i = 0; i < n; i++) {
+      const a = ys[Math.max(0, i - 1)], b = ys[Math.min(n - 1, i + 1)];
+      const dx = (Math.min(n - 1, i + 1) - Math.max(0, i - 1)) * DX;
+      sl[i] = (b - a) / dx;
+    }
+    let maxY = 0; for (let i = 0; i < n; i++) if (ys[i] > maxY) maxY = ys[i];
+    const interp = (arr, x) => {
+      const u = (x - d.xmin) / DX; let i = Math.floor(u);
+      if (i < 0) i = 0; if (i > n - 2) i = n - 2;
+      const f = Math.min(1, Math.max(0, u - i));
+      return arr[i] * (1 - f) + arr[i + 1] * f;
+    };
+    return { key, label: d.label, xmin: d.xmin, xmax: d.xmax, startX: d.startX, maxY, open: key !== 'pendulum',
+             hAt: x => interp(ys, x), sAt: x => interp(sl, x) };
+  }
+
+  // modes: 'track' (on the ramp or rope), 'held' (in a hand), 'air' (falling), 'floor' (on the ground)
+  function newState() {
+    return { x: 0, v: 0, TH: 0, E: 0, t: 0, stuck: false, mode: 'floor', ax: 0, ay: 0, avx: 0, avy: 0, fell: false, impact: 0, snapped: false };
+  }
+
+  // put the skater on the track at rest
+  function reset(S, T, P, x0) {
+    S.mode = 'track'; S.fell = false; S.impact = 0; S.snapped = false;
+    S.x = Math.min(T.xmax, Math.max(T.xmin, x0));
+    S.v = 0; S.TH = 0; S.t = 0; S.stuck = false;
+    S.E = P.m * P.g * T.hAt(S.x);
+  }
+  // let go in the air (v = 0 for a drop)
+  function placeAir(S, T, P, x, y, vx, vy, TH) {
+    S.mode = 'air'; S.ax = x; S.ay = y; S.avx = vx; S.avy = vy; S.v = 0; S.stuck = false; S.fell = false; S.impact = 0;
+    S.TH = TH || 0; S.E = P.m * P.g * y + 0.5 * P.m * (vx * vx + vy * vy) + S.TH;
+  }
+  // standing on the park floor, off the ramp
+  function placeFloor(S, T, P, x) {
+    S.mode = 'floor'; S.ax = x; S.ay = 0; S.avx = 0; S.avy = 0; S.v = 0; S.TH = 0; S.E = 0; S.fell = false; S.stuck = false; S.impact = 0;
+  }
+  // carried in a hand: all energy is potential energy
+  function hold(S, P, x, y) {
+    S.mode = 'held'; S.ax = x; S.ay = y; S.avx = 0; S.avy = 0; S.v = 0; S.TH = 0; S.E = P.m * P.g * y; S.fell = false; S.stuck = false; S.impact = 0;
+  }
+
+  // one small time step h (seconds) on the track. P = {m, g, mu}
+  // Move with last step's speed, then set the new speed from conservation of energy at the new spot.
+  function step(S, T, P, h) {
+    if (S.mode !== 'track') return;
+    const { m, g, mu } = P;
+    const sl = T.sAt(S.x), cs = 1 / Math.sqrt(1 + sl * sl), sn = sl * cs;
+    const ag = -g * sn, af = mu * g * cs;
+    const v0 = S.v; let dir = 0, vmove = 0; S.stuck = false;
+    if (Math.abs(v0) < 1e-4) {
+      if (Math.abs(ag) <= af) S.stuck = true;                    // friction holds it in place
+      else { dir = Math.sign(ag); vmove = (ag - dir * af) * h; } // starts sliding
+    } else {
+      const nv = v0 + (ag - Math.sign(v0) * af) * h;
+      if (Math.sign(nv) === Math.sign(v0)) { dir = Math.sign(v0); vmove = v0; } // keeps going
+      // otherwise it turns around: stop for this step, restart next step
+    }
+    const ds = vmove * h;
+    S.x += ds * cs;
+    let v = dir, off = 0;
+    if (S.x < T.xmin) { S.x = T.xmin; off = -1; }
+    if (S.x > T.xmax) { S.x = T.xmax; off = 1; }
+    S.TH += af * m * Math.abs(ds);
+    const PE = m * g * T.hAt(S.x);
+    if (S.stuck) {
+      if (mu > 0) S.TH = Math.max(S.TH, S.E - PE);
+      v = 0;
+    } else if (v !== 0) {
+      const KE = S.E - PE - S.TH;
+      if (KE <= 0) { v = 0; if (mu > 0) S.TH = Math.max(0, S.E - PE); }
+      else v = v * Math.sqrt(2 * KE / m);
+    }
+    if (off !== 0) {
+      if (T.open && v !== 0 && Math.sign(v) === off && Math.abs(v) > 0.5) {
+        // too much energy: it leaves the end of the ramp in the direction the track was pointing
+        const s2 = T.sAt(S.x), c2 = 1 / Math.sqrt(1 + s2 * s2);
+        S.mode = 'air'; S.ax = S.x; S.ay = T.hAt(S.x); S.avx = v * c2; S.avy = v * s2 * c2; S.v = 0; S.fell = true;
+        return;
+      }
+      v = 0;
+    }
+    S.v = v;
+  }
+
+  // one small time step in the air. Returns 'track' or 'floor' when it lands, otherwise null.
+  function stepAir(S, T, P, h) {
+    const { m, g } = P;
+    S.avy -= g * h; S.ax += S.avx * h; S.ay += S.avy * h;
+    if (Math.abs(S.ax) > FENCE) {                       // bounces off the park fence: sideways motion becomes heat
+      const out = Math.sign(S.ax); S.ax = out * FENCE;
+      if (Math.sign(S.avx) === out) { S.TH += 0.5 * m * S.avx * S.avx; S.avx = 0; }
+    }
+    if (T.open && S.ax >= T.xmin && S.ax <= T.xmax) {
+      const ht = T.hAt(S.ax);
+      if (S.ay <= ht && S.avy <= 0) {
+        // lands on the ramp: it keeps the motion along the ramp; the motion straight into the ramp becomes heat
+        const sl = T.sAt(S.ax), cs = 1 / Math.sqrt(1 + sl * sl), sn = sl * cs;
+        const vt = S.avx * cs + S.avy * sn;
+        const keBefore = 0.5 * m * (S.avx * S.avx + S.avy * S.avy), keAfter = 0.5 * m * vt * vt, thOld = S.TH;
+        S.TH = thOld + (keBefore - keAfter);
+        S.E = m * g * ht + keBefore + thOld;
+        S.mode = 'track'; S.x = S.ax; S.v = vt; S.stuck = false; S.avx = 0; S.avy = 0;
+        return 'track';
+      }
+    } else if (S.ay <= 0) {
+      // hits the park floor: everything left turns into thermal energy
+      S.impact = Math.hypot(S.avx, S.avy);
+      S.ay = 0; S.avx = 0; S.avy = 0; S.v = 0; S.mode = 'floor'; S.TH = S.E;
+      return 'floor';
+    }
+    return null;
+  }
+
+  function energies(S, T, P) {
+    const y = S.mode === 'track' ? T.hAt(S.x) : S.ay;
+    const PE = P.m * P.g * Math.max(0, y);
+    const TH = Math.max(0, S.TH);
+    const KE = Math.max(0, S.E - PE - TH);
+    return { KE, PE, TH, E: S.E };
+  }
+
+  return { GRAV, FENCE, DEFS, createTrack, newState, reset, placeAir, placeFloor, hold, step, stepAir, energies };
+})();
+if (typeof module !== 'undefined') module.exports = Physics;
+</script>
+
+<!-- ========== APP ========== -->
+<script id="app">
+(() => {
+  const $ = id => document.getElementById(id);
+  const P = { m: 60, g: 9.8, mu: 0 };
+  let gravKey = 'earth', track = Physics.createTrack('half');
+  const S = Physics.newState();
+  let paused = false, slow = false, dragging = false, showLine = false, showMarks = false, graphMode = 'pos';
+  let lastRelease = null, firstContactX = null, crash = null, hint = true, toast = null, dragOff = { x: 0, y: 0 }, lastPhrase = -1, airT = 0;
+  let apex = { x: 0, h: 0 }, hist = [], tHist = [], acc = 0, lastTs = 0, won = false, confetti = [];
+
+  // ---------- avatar ----------
+  const avatar = document.createElement('canvas'); avatar.width = avatar.height = 256;
+  const thumbCtx = $('thumb').getContext('2d');
+  function drawThumb() {
+    thumbCtx.clearRect(0, 0, 80, 80);
+    thumbCtx.save(); thumbCtx.beginPath(); thumbCtx.arc(40, 40, 40, 0, Math.PI * 2); thumbCtx.clip();
+    thumbCtx.drawImage(avatar, 0, 0, 80, 80); thumbCtx.restore();
+  }
+  function setAvatar(c) {
+    const a = avatar.getContext('2d'); a.clearRect(0, 0, 256, 256); a.drawImage(c, 0, 0, 256, 256); drawThumb();
+  }
+  function makeCartoon() {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const a = c.getContext('2d');
+    a.fillStyle = '#F2C09A'; a.fillRect(0, 0, 256, 256);
+    a.fillStyle = '#D93A3A'; a.beginPath(); a.arc(128, 118, 118, Math.PI, 0); a.lineTo(256, 112); a.lineTo(0, 112); a.fill();
+    a.fillStyle = '#14171C'; a.beginPath(); a.arc(90, 150, 13, 0, 7); a.arc(166, 150, 13, 0, 7); a.fill();
+    a.lineWidth = 9; a.lineCap = 'round'; a.strokeStyle = '#14171C'; a.beginPath(); a.arc(128, 168, 46, 0.25, Math.PI - 0.25); a.stroke();
+    return c;
+  }
+  let dogCanvas = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const a = c.getContext('2d');
+    a.fillStyle = '#9ED8F5'; a.fillRect(0, 0, 256, 256);
+    a.fillStyle = '#8A5A2B'; a.beginPath(); a.ellipse(34, 120, 36, 82, 0.25, 0, 7); a.ellipse(222, 120, 36, 82, -0.25, 0, 7); a.fill();
+    a.fillStyle = '#C98E56'; a.beginPath(); a.arc(128, 132, 98, 0, 7); a.fill();
+    a.fillStyle = '#F0D9B5'; a.beginPath(); a.ellipse(128, 168, 56, 46, 0, 0, 7); a.fill();
+    a.fillStyle = '#14171C'; a.beginPath(); a.ellipse(128, 146, 20, 14, 0, 0, 7); a.fill();
+    a.beginPath(); a.arc(92, 108, 11, 0, 7); a.arc(164, 108, 11, 0, 7); a.fill();
+    a.strokeStyle = '#14171C'; a.lineWidth = 6; a.lineCap = 'round';
+    a.beginPath(); a.moveTo(128, 158); a.lineTo(128, 176); a.moveTo(102, 182); a.quadraticCurveTo(128, 204, 154, 182); a.stroke();
+    a.fillStyle = '#F26D85'; a.beginPath(); a.ellipse(128, 198, 14, 12, 0, 0, Math.PI); a.fill();
+    return c;
+  })();
+  // Murphy's photo is built into this file, so he is the default skater and the "Use Murphy" choice.
+  let userPicked = false;
+  (() => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 256; const a = c.getContext('2d');
+      a.drawImage(img, 0, 0, 256, 256);
+      dogCanvas = c;
+      if (!userPicked) setAvatar(c);
+    };
+    img.src = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwQDAwQEBAQFBQQFBwsHBwYGBw4KCggLEA4RERAOEA8SFBoWEhMYEw8QFh8XGBsbHR0dERYgIh8cIhocHRz/2wBDAQUFBQcGBw0HBw0cEhASHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBz/wAARCAFAAUADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD78opM8UA1zcxQuaBSCnCqjqxMWikNArVMQtFFGQKbYBRScnoajKy5yHB9iKnm8h2HSP5a5wT9KoStHNITHJlxyQO1W3aQLhgCD6VmGH7NOZY+A3B46iuerO7NqaLC3EkY65x609NRAba4x70uxZEyBxVO5hBU1lzyjsy1GMtGjWSeOT7rA1JmuRNzJayqnAU8HNXrfVTBOY5Sdh6Fq0jiekhSw73Rv5B71BdgGLFQNIYyXB+VuRg1FJMWX73enKvdWsRGm73MDVYVG1jgnnOa1MPfeHVYD94qcfhWfq7Bozg4xU3hm8UWk9s3IVuDjrkVzQtdpnTNOya6HH38qNaPO7YkjbHHWtbS/FD3OhiJsmVPlz7dqy9atjHLdIF+U84xVHRYDsaPng5wK57tPQ1aTWp1Nlq2+4EUjjjmunEg3Ag5GK47TLULrkPmJmPaSQa6Zl8pHxgKvp2FaQehnJXdhIGW61hV6iMbvofSqNwBY6t5qEg5JIq9og/ezSEcuePpVTVkJumI5INU9FcS+JryJzK08pcnABrpE+6PpXLW5CoCx6nmupT7o+ldOFd2zHEaWFoqC7vIbGIyzuFQUllcNdQCYoUV+VB64966+ZX5Tn5Xa5YoooqhBRRRQAUUUUAFIaWkNTIA7UlL2pDWcu40MBzSioGfnIqdDlQaxWpTVhRS0UVauSKKU00Uua2TuhFa4WcgmMjPYZrAm1O7il8ueMhT/EhzXUbh61SvLRZfmBwO9c9WHVM3pTS0aM+3v5YudwkTuD1q/HqcMmMEj61j3WmyIN8DnI/hqsJHV8SoSw6HNYKpKOhs4RnqdUJ1bvxTXVJR2rIAkmjDRtgjtUAnuYH2y4I7EGqdRvchUezNyMbFK56VDMmec1QS6K/Mz8e9L/a0PQnPap5kP2ck7lDU7M3JlCDEqBXVvXkg/wAv1qlBdnULdraZdt1D0A7itKO8Vr2R2GUEeOfXNZ2oWoM/2q3OJV5yO9YzOhX6ljTdT2DyZmyg4GeoNa9xsKKy8Ej865C4k8wrIpIm/ixxWvpd/wDaIxA5/edialTezE4q9xL9gQRiq2hzeVqBBzhhipLpyjMrnpxWWJHt51kU4APpT5imtC14gQGdyOM1j6QAs4A/iPNal/cLOC/UkVkwExygr2NQ3qPZHZpaAzJMOCvSjUbkxosajLSHAAqS2l3W6MfSqzMTJvPJHTNaLREWuy1bv9mcOzDOMbR2qC6nLtu2qxPvVR3bdu9Kg+1GRto25Hc0m+g+XW5eib98gdSApyRWrd68keEhUlyOOKy4GMaqN4KEcse9UzrlpYyHyohLKDgEn+VVGo4aJkypqWrVzZstJe+kF1qILEHKxsf5iuhAAGB0rmotdyqtK4Ud8GtCLWEccDIHfNdFGvCOhz1KVSRq0VBbXcd0uUJ46gip67oyUldHO007MKKKKYgooooAKKKKlgIaSg0VlIaKrDlasINq1BnOD3qRZMnk1knqaSux4YZp/Wom6gimSSMo+Xk1SlbcnlvsI8zwyEOMoehqTzVIyDUDz+ZEAy89xTE+nHakXy6ak7ZY8VBIJFBO7AqVOW+lTSJvQjvQ1dBezMxWcEbulQXMKyk/L83rVmVShwRTQCR2rnaOhPqZK3MltJjkj9KsXM63MHUc1HdxszNgj8ay9zxMQUIzxwahuxol1BGDS7c/J3qaaGJRiNmyagDBev8A9elLkde1RcsYlwIXKyfNnt7VL50bZCHj0Jqo6hpC3OaVkh2EDhzUt3AiuWAyarxO0M6yISMc0yaTYcE7iPWkeT7oJ7VDY0nY02u/tJBf7xpskG9eFxVO2ZmlVFxmujmtQUyOoGDTWpLVjnW/djaec8VXt1zNzzjmrF6u1m9RUWmRPLcBgMoalF9DqogUtkB5J5pgHmHHOKmaNiiqPTNSqixRkntW6IuZ95iGEkY3NwAapxRG2iMsgGeoUmtL7ObmdGYZCnmotUXYhH8J4qJK2obmBfanPIuzfgegqtp+k3N/cAQkl+rMeAtMlQO5O3Kg9hU7Xl0I1SFHROmRWTZduxr3Hh9YkKz30KsMcFslqlimt7SEFbmJmHbIzXKySEEmWN2J4J5prT24wEhw/wDePWpc7bIpJ21Z6rpd/bT267ZED9xmtBXVxlWDD2Oa8ktZ2kCgHjvWhYyy2t1HJA/lgHJIbr9R6V2UsdyJRaOWeEu20z02iqNlqlvdqqiVPNxyucVer1ITjNXizilFxdmFFFFUSFJzS0hNQwEoopDWUnbYZBxjpTF61CLjNPEoz2rmN+Vos9V4prLxyaj8yo3kJHFVcSixc4OKGOBUUcyhsODUzqsg+Wi+hTVnqNWYA9aso+45B59Ko+XhqmjkVCOcU1JrcJRT2LEiLMBxzVRCMMDwQSKtIytIWDcEdKq3UTK29DwRzSlrqhQ35WU7u3yNwJOKy2+bO4Yx2rciLOhV8cVm3MA3E1hJXOmD6MybzarArnOKjh/eLz1qa7SqcE6JLtdiAazZoWhDuOCOKPs0bNgjIqWe1cp5kEgYYzgdaS23FeRtb0qLgR3WmI0fyj8qwJYHgbaTnHeuriJJ2sePas7UYMk8VLLiZdpceQ4cfeFaVvqjNkSHCmsd4duf8ah+2ADayj0pXsNxudstlBNg4VtwzmrUdpFBny4wAOTxXJWeqToNqy1q293cBJDI4w2M5PSrUluZyTNqacJ93BqlLdmQYBCn1zVIyk5xICM9hVeWQKexPuKrmJsa8d+kabF6+ves/UNQQqQzAEjFZ73BAJBwPSsO4eW5l3L0BwKmUi4o2Ib62RsGEvj1NX4dbsTgNGsZzgCuTeGZzhj1qeIhIzG4Vl9CM1NyuU7OW/tWtWbYjr0x1rmrhtNmlcvCFPYg4qqtysQ2odqk9BRc2K3CCWEsr/XrSlqNDLhI4Nxt5QEHoc1Se8AQ4lIPT71Y8rXEVwSjb+cbT/FT9Dk02XUnTU0d0PIGdqqff1rEtG7os1xcXaLZpNPcZ+UqMqPcntXrOk2+oQx7r+4jkcjhI1wF/HvXLLr9laxWMGlqkamRd2Bgbe9dZqmsWejWT3d5OscKjqTy3sPU16ODUI3k3scOJcnZW3LL3CJPHCSN75IHsKmrz3wZrE/i/XrzVirx2luvlRoenNehV3UantE5LY5asORqPUKQ0ZpKtszQUhpaQ1lPYoxSGA45p6xluvb0qKS7ji4xlvaqrX8gPQha5Lnbqai5XrnFLvXsazoLya4yAu1R3PNWkkGcHrVJkuJOBu7U7YMU1GBzTw5BqlYl3GshxkHB9fSqM0RDZEjDPWr7v1GMe9Z80zEkKMgcVMmVASNZImBjlyzdmFWku2JKSqOnWs15XUj5cYoe7DKDjkVCkW4pmm20cqcVC+1h1yfWs170qCcHFQf2kVwO47YpOQ1GxZuLcODWHeWzKWwDge3Wt6O6WRQSRmqt3NGOGTKdz1xWclc0OchaVwPK3qw4IJq9BcyowLHODV0rp7jKyuG9MUw2Ubqdj5PWs7WKTuWI7hJT1FMu/nzg5qkkDxOSuf6U/wC0BX2vnj8qRRRltmYng5rOXT53m4QjaeTiuthVJT8qZ+orTgtlEeBGB6ZFUqdyHM5i2sRApLKR7VHe3A+6rcd/pW/fW7hSWIwOABXNTWbr8pOCTnJpNW0BO4y31WJDsL/QGriSC4cAEHNYd1ZRI7MzlmHoMAVXh1I6a5CDJIJwanmsVZG9PD5kpQcY5J9BVfagfEYLAdv8azovEWWYvGw3jGalS/RQxdgoxuYA4wPc0cyGTyHDZGNw9e1QFGdckBT9ayp9QZmLZwp5GepqFr9WU7pDkiocx2NKS4ihXaVDEe9QR615D4QEAdcnIxWDeanBDuLSj5eozwKzz4hjcqY4ZHUjBKqcH8T2qeYEjobyS1vAZTceQwORxiqcv9n38AR50356g81mvdabfOLdpjDcsODk7RWfqGj3Ggsk8qi5tG4Lxc49ORSKOh0uK406VkjvC6MdyoxyB649K0tYgbVfLa4llkCjhS2Vz9K4lLqOdla3l3bffpXSRamr24EjjOO1Sxnd+G/Eb6HBpmh6dYPczyvunnxiNB3+pr1RN20buvevAdF8RNpVykgYsRyDXpGmfES0uolMyFSOpBruwuJjHSbOTEYeUneCO39aYjby2PujjNc4PGun3e2GzlEl3IQiRnjk10NvF5FukZOSo5Pqa9CFWNV+7sjilTlBe8SHim0ppKmTIONhs7idjiUg+9a9royxgGV97e5plgCY1AYlj1OK1Eh45OTWUI9zrnKwwwRIPlGB6U3YnTAxU7BQMZ5qA8mtLIzTYqoB0xiopnZT8mDTjHu/iI+lOWNV4ApcpWhRkeZ+vA+lILR5BncBWmseegpzRt6CpcA9pYx2s9vHmFiOtQtbE9BxWpLGAc4wTUQXA6Vi1Y1UjMewDqeuarPZFSMZ9K28Y4qGVADnPWpaKTMMW7K7Yzn9KlMTkMuQMCrzpzx0qPywGziosWYU0/lOVKceoFRpqLwsQgIB9a25rdHU/KBWXPZgZpMaHR6gsn3jzSWyebdkk5BPpVT7IGZQOnc1qWtsEAIbmpKNiCPZ0AxVkPjpWUkpUkbicVcE2F6dquMjNxLMgBXGMk1iXNsqszP/ACrTa82JgKWY+lZd4ks6nLbc9BmiW4krHLandpllU9e+K5m4mV3OOvpXVX+mqE/qa5i6tBC5wRmsJLU0iyhNcuDwCAB1xmqkl9KyBTuK7s4Pc10elX9xC/lCKKRc91rcx9oQubaGM+gUUchVzgxHeXQ/dhsUn9j6kxBVSzdhnpXZzwnIAIUY9KpFvLkADH061LjYdzkJfDerOcIiqx5JJyaQeG9RC4Ls+OuOK76K9URMN2OetXICsrEIRn1pWDmPN/8AhGbm5j2SogJ7Pn881FPYa/oWnt9niivoQ4LW8znDL/s+jCvVJ7eNYg0gGDxk8YrEaZYmf5Fkj5wTz+lFrDTPnnV/Et1pWomRbG5tY3YhUdcj86sw+PJxGrFN49GPNev6rLpV9G9vcxYXqcj5a8y8S/D2z1E/adDvktrnByknKP8AXuPqKGkUmbGh/EhsxrJDEATzuHTFdnZawfEMkS2qRqJDjEQ5PrXz1H9p0i/FjqSeXKeQAchh6qe4r1TwPqMmiSpPbOP3hyCeQR/jWUoW1NIu563b+Cb+MiWNFjk42ur4Knsa6zStY13RGht9eMctvI2xLwdAewY/oDXB2/i/Ubq+Ci5UW8Z8x0Ixn2rvNHn1HxVDIL60SPTpFwqyL99fXFa0ZWfu3Oesr/Hax24YsMjp60c1k+H4Z9PtTp1y7SSWxIjlY5MkX8JPuB8p+nvWtXoptpNnlyVnYzrRAqDjFWnc4wKpJMyipo5N3Ga2Rs11EYnr3pULN1GKeUz3pQmKYroAMd6OKftA5NJwM8Y4pk3FRsGlaQ9jUYkBHAGajkcqRyOfepk7Ao3Y2WQn0qFpCB1xVe6uWjXnbk9xVE6gzEYYYxiueTN4xLkkp7HFV9z+uahefd1GRTkbgH9KzbNUSpIC2O9Mlm8pyGFPC8bgPmphxKcNUtjGmQSKSO1VJhuHvVr7PsyRUTKR1qWy0jN24bmrcMoWrK26uM4H4imvZhVO0jJ9BSGRTSKkWc81hXmvTaYx3QmRe2OSa6JLPzQFxn1zUd3p8AALAFl6EinZ9CW0YY1jVryEGO3FtCeS7cmrMekahc5LvKN3I7Gty22qqmQqRjj0p0mpRxtgZ4GOelWo23IbMVvDCxKDNI5duuWzTJ9CswuWQE+meatXOpx7WkZ2YngKDgfjWDe6nM5zJLHGD0GcfrTlboO465sIrZt0RCsBiqEuqvBHsMe49NwNNl1e0h5e8gYj+EPmqLa/a7v3mAjHHTqKyLRSuPEsiyhZYtyHgYaq02oLcsCpdW7jHIrTN5p1xlol/eDkZWoBNLvILICcnLAAfXipY7la1eYyjKu6EY6dPrW/p7qjF/OCyVlLFdZLJcxnPbHFWIsoczSrv9IxxUtoDqJL9IoB9oAkRvTniuX1VoXbNu5QckkHI+gqb7ZGAwlBO7jJrP1KKKa3ZopdgHJIxgUr3GjndSkZoZnJDFV4464rlLPxRp+p7IpEjhuEYqcHBz6VHqfiiTTLwoXR7ZgVzu5Jry/4gl9K1CDWLNnWK4AEgHTeB/WnylI9uutIsvENlLa323DD91Opw0R9jXKaVHdeH7z+ztQmRgr/ALqYLhXB6cdj7Vz/AIC8ewXkkdtdyGGRjtRycqx9K7LxnDNPHbXUSl0QgSAnlfRvzqJK2jLi9T0bwp4VHilp1GppZXlrgopH+t5znHp2r2Sw106aIrTV4xbkkJFOvMLjt83Y+xxXyfY69PaW4ubeZg47/wAQHf8AGuz8OePNd1LyoUuxeICP3U5zu9qmE/Zu6IqUvaaN6H1CrpIAyMGX1ByKdXC6D4qbTzbWetaa+lee22GbzBJBIx/h3jo3scexruq9CE+dXR5VSHI7FN4gScAU5I1XkCnLzzUMrlnC7sKBzx1rrK1ehKGySKdj2qBCc/LT3n8kHjP0oBrsTB0AGT0pj3kcfXpWd9vXPQ5+lQyziT6UnKw1T7lqXUbVQcjcfQ1lX+pxCPI3KR0wKZM0I6YAqo7xsrBTgHg+9YTmzaMUihJrDTDEgVl/vDrVUKHYmN8MecZwamljQsVUKnb61D5RBGVHHfOK53JmiRNHeSQNtcZGK0YrkMAc5FUgAyjgFW4+lSrGIwMdKLhZlw3hXBGcCrUZSZCyE7hyRWXI4C5pbO4KyEZoGlqbcZ8xQO9RSx1HHMSR0/CrZ+dc96B7FVJPLdVPStARrsHFU0h3zqc8Dr7+1X8qBgkdKEhSZEmxc881VuljyNxzgZJ96dMTGhK45NcbruvFHMNqS0q8MQOlaKyRJc1nWhZqPnAXso6mudOrzS4kcFgf4R2/GuYvdSZJJZLucKdpZyDkhf5CuZ1jVftEMcizyCyIDBEOC/txWcm3sUkdpqXiC93eXaRCR8dFIIHvWK1lqN+7vdPtQDIGevrz2rGstSt5GS3gnjhXGOQTg/1NWL3V7ewQGNHkjB2m6vZBGin/AGV6n6VOvUpWL8ekPyi+WR0BzkD/AOvVh9HcsqmbAAwCBn8K5+Pxmrxk2WLsr8p8lGKr/wACPFV7vxpdMhjfZCM8KgLSHH0FDQ07nVQ6FulWRr1Ik6fP/hWxFpNiEKi+d1PQDGK84t9UvbzDrbGNO7TOEzUsniZbA7bnUYEkIwI4QHJHualoDtZWFtlYH3noDVRb9sZY8njniuAuPiAYsNbRSnb1aXGDWY/xInkcK9uAvUj/AANTYpI9Omd9h+c8DPPNZL6u9tvRXbHpjiuUtPHrXUnlmRPLHHzcY9qvnVXYF1gVlYZLKc5qS0ed+N7uUO4ZYiySb96AAuD2I7fWsy4vl8RaHNp1w/8ArU+TbyUYdOldn4insry2lWWBiOjbh8wHsa8klkSxu2eB5FjiYfKwORWkXoIwbNZ7TaXDFEOAwXoQa+jPBviN/FPhgwXsai/iQo3PL4+634jH414jDvnvJLm1jEkLEtJFgcj1r0HwfeR6Vcwf6BNLaXJ+SeE7jG2OVYZ6d6KjTQ0acl072bX1rG260YxXEWMMCOoP4Uab4kg0q8F9YuXR8fu5DgKfb3rrl0fSNWu7u70u5dJ3Jt7u1YYHmKPfuQQR6ivMfFnhyXwzfMZ55oonwFeT7j47Eevb1FYpJ6M08z33Rfjzc3umnTZ/Ckmo20q7BEPnDL34PWu58IfHjQbmSDStTtbnR5VAjiM6ExgAYAJ6j8a+RfD3i7WvC93Fc6bOkyRHcm1x29u/0r6r8FeIfC/xs0M22rWNvHrcKAsfLCt/voeuPUU4yqRejMK0KdrtHsnnxxoRu5PtVKS6I5OSvvUVxeKqkPJnBxhR1pp2OoyevavZucUVYjl1fyxlAT9KyrrX3QkBWx3HatK4PloyrGDkZFZEqrJkGPB71EnbYpIiXXlbkqw9SDSPq6EEmTC/XmqU8K87Fxx0x1qrIevyD6VzuTKSL8t+JgWVgyj0OKjF2pH3iAex5rN2/wAKDHfGaQsQwz1rKUrlpGmZ1dgCTkdGp0bhiu8fUisxXJz2xVq3YkA5681FzRKxqRADIB46n2qcAMFweB1NVbfJf2q+EBIwePSqB7EEseFOOc1UUFWJzg1qzRAqDnqMVnlMHGM0MiJctZDuGeRV9JfM4BIU1kIxB44pzXohGCc0DbubnnxoMK3SqU+oBSSW2qOc1z91rhgQgAsMYArmdV8ToysFYjK4OfWquSkdbq2uxxwuDOqjbn3ryTxR8QY7ORbOx2iVuXkI5AzWVrHiNpC+SScZHPFeH+I/Ecul6nLNKGeNyefp2ppuWg2rHc61r1zq1wIPMMVvPMsJOec9TWTearqOqXcdpYoVeeTy4doyREvHyrjHXvUPhpUvr+W5vXWC2tF8xXJyOR1PuBUF58UYQ6ab4XsXhnlUxm8dBu2/3s9f5AVooE3Otm0zVdOfyI54rGNRmSSd/wB9J9cc/gMCsoaqu5zaq09ygw1xJGM4/wBkHKoPfrXMLY3EVlJLJqQ8qPAnv7gl2nkJzsjXOSO3YVh3Gr29pmS8uJb11zss4iFUe7Dp+JzQ6d9gUju18Ux2u4atrKRKr8RLJvx7ADgfWtU/E3SdNgjSO1k2uMiWf5A49eeTXiw8RqJRMDYWYP8AzyXzJAP99u/0FbtgLDXU3zamjnqFupNv5k9aTpoaZ6EvxE0W5LsLawMjdXdi2PwJrPvPEd7er5dnd2W08bYY0Uke5qTTLC0jtUMbaJJID9ximOPXiujTwxY63KJLmDQIEGQDBMqk/gBWLaRqkzjRJcxnfc2C3CsTg8Eg/hWvo82lavJ5TR21vMDgxucAntz2rp4fAdpaMkunXvlTg5BSXcP++ar3XhaS8nVNW0+zmBbi/sE8mdPRiv3X9+n1FQ5ItIwdS8POxAFt9nlU4+UZD/iKt6bc3GkxBJUMqDgxseo9jXVx+GJLG3WC5lNzYsf3V0hK7fqP8apXeg+ThGXzYBwG5G057+lZtjKl2llqkfmW5AJHTPIPpivLvFWkyWE+7yHdZPlBUc812Wt6fd6PcO0e54GHydsfiOteZ6xruq3E8kJuJEwcGJcEYq4oRFo8kmk6nHIifunAyCf0r0u3tJNLVNStA7WFwoWWLH+pY9HHt/jXnFlE9wTDcQsuBuU47+te4+AopJtL+ySqrSFSqB+jZ7H61nUlY0hHuT6L4qsb2Mx3HkoN2yZnA4Ycc/54rptU0XS/Fmjf2fcr5yYIwzZZMdCG9v1rxnxTpq+GPEKyR7o7TUWIwx4V17fXH6Vo+HfF1xY3MMdxOEJzGVVuMZ+VgPfip5b6xBStozgvGvgXUPAeomVSZNOmPyTR5G0jsQOn1q94I8Z6lo2qQXsUyo8Z4YNzj6+9eux+LdH1+ebSdSS3keVMSQT8LIvseze4ryfxV4ObwdefbLCNbnR5XJVpBlo/9l8dMf3hwe+KtyurMElufoHNHH5m2PG4DnP8NOVEZc7hx0NSXDxRMYI1HGcgc/5JpkfDfNye9evc84LiVI8HGSelUyVkJx96rsibz0JNMVdrf7XoBUSGZj26n0yT6VSlsVwx2sOa6F4wgJc5x04qhPdAKSvHrkVlJFJnOS2YIK5IYdc1UKFduRx0z61YvrpVkYhvvcYJrCudRXeq5Za52axibIEbHAGD6CpotqgAZFczDdT7sojhc8c+taMOrBQVc7SOBmlYuzOkt36c5zWhECT34rnrTUodu7epY+9XE1dULKT3GBTRLWhuPgx9aqbCz9+OlSCUSMm0jBGcCpVKgqSVGetVYi1io7iINuUk46iuev79YptgyT6VZ8QaoII2WPHHeuPD3LzC5wzIc5wM1lKWuhcVobN2sstuzADjnHrXEakMkqzFfUjpXpdvGrwRnacOM81zmt+HTKzvHkZHyjPU00gPE9dtZbKDzriQuikttU4Jry3xDI7GeZGVjtyyAdF7lfevZPFNnNZRMksbPGT8pI6H0rzO7khu53gMYjmORtI/XNb011IkQC7Nj4ObJSV2lQv6ycc59q5W/wBZXRtWdbuS2gtXiDykck5+6i9z646VLrVzNbWr28jKFU5XHP6V5Tr9xMu+OSUylzuBPX/OK6YRuZSdjoPEfxDu7hkjglWKziGIIV6j/ax03H9K5VL64vbhn3uoIIOWJzWZawiViZW2QrlmAHJHoPemS6kzOUhUpH2RT0+vrW6ilsZ82tzorGQKvzLwDwGNblnq0FpIiXFvIY1PLJxx+Nc/pniexsogl5pC3Bz1EpU/4V0sPibw5rC+RcWv2SNuu5j8vuCO/sahxuWpo9H8O63ot7kiWaFYwMi7QkH34zXrmhaXpV9HGrpAT18yM4LA+h9K+XbeUaPfm50+7W7t1O0RPzlfr/SvV/B/jiKR4YBKgcg8EdF/riuOtS7G8Jn0BY+DtKvI1S0vFWcEkK8hBxWrD4KvYlPk3JGDnBcsD+fFea6dqE6TKyyfKELAR4JA9cnqK6Kz8Z3UttGUfzAhxvtmw6n3U8GuBo2OuFvqWmBo57Zbu2b7wRcDn+tZd8IrW3cQyh7SYEbZM7kP938K0oPFd19n+1w7Jo4xiRVPzAdwV61DHq/h/wASHb5ggnYHInOxQfTJ4HtnigZ5mzyQLNZNcK4OWt3k+YoO6Mfr0PpXAz6nEGnuDpsIvLY7GYAFk99p6g+tejePtAm0mZJBAYHwCWcY81T3BBwfqMivGPE/mwa0t3BuWZYz5idNy/1rSALU7LRtduNTVAywjA48yAcj0zXpuiXMeRHIAlwBkbRj8q8i8N6d51ql2Ll5oCufl4Kn/wCtXWx6pILaExN/pEcmcgfeHpmsakbs1R1HjnSIdT0Z3vIFmt5P3dwR95H6pID1Vvp6e9fPGspJ4cuBbXErSWkgBinYfcZTkfnX0mt9a6jp6pqODYXyPZXSkYKnHytnsQcEGvn3V9Fna61DwnruTeacD9kvM5W4j6ru98Y5FXhne6JqLS6OWk8TXUF2HJEiKoAZwCBzXsOg+MLLXNJMV84jG0JITzwRj/CvnPVvNs4RDJG6yxHawPQjsQa0/CniFrYSQTvuil7McZH/ANauqpTTjdGEJtOx+q0s8D3n2WDO4cs45wD6/Wp4yZTsiGEB5J7iuTs7+K2wxRrm8ZtxY4HmN/h6V2Oj2lyY3nvCqyynPlpyEHYVvTk5MwmlFE4ChfmOSvGB2pkjqgxyuew6mrE0Spl8lTjv1NUJp44RjpuHTPU1u9CE7kV5drDB7AY+Y81yWpaqoUMDvXJGFPAP0rX1GUnkg5A+7nFctehzHtUDByflA5/GuSpK5rFGBf6oWkaMKozwowTu/Cs+41ZLCGSa8MEKRj5mYgBfqTTvEOoWugWF3f3m5kij3BFGWYjsAPWvi/xn8RNX8c+IHi1Tda6fGx8rT4mPlJjoT/ePTk/hVUqXOy5VFBH0lqHxr0+O4SG3824lckIttjn0yayYvjpCmqC1vrFljLYdgMGIdM+/5V8u2fi2/wBCn87TjbpOvO5owxP4GrPjv4i+IviZqdhqOtG0W5sbOOyR7SLylZVzgkd2Oev8q6fYRMHiJXPrbUfHMEMji0uUDpjy5HOEPcbj29M11GieNVvtOjZ4c3G7aUVwfwz3r468D3moau8+mxxpdXAgaRIJGOZdvO0H1r2TwU93pmmjVLuzlgt0URpbRLtlmfPYH7oHdj+FYTo2No1Ln0roHiFykjy7VH3Vyea6CacRW/mzShQ2Nqnq1ef+GDHdQw3cNuyXS4KxOOnp/k12unaRPqrrLf7vOIJSLPyrj2rBxYNq9zn9X3XQO1yQvPStfw7avc2bIy89c44rbvNEgazG+HBRu54JrTsY0tbJVChWXGAPSpVN3ux82hTj02WCB4lXIGQGHXNVr2zlhijk8sFlBP4V0UN0qxsWbrUN7eI6eXEVXI+8eg9z/hWvIieZnm3ijwV/ati1xAR5gXLpwBntj0NfN3irRptFnKXUKROMlJcV9ox20UtmIoYiVReWc4D+5HU815b8Q/B41q2ura2gWe5kXc7tgJH6c+vsPxppWJPjvX4Eu7R920BRkYP+ea8b1RzNdSIZAyp/F2H0r1nxf4e17R1uxNo94qR7iTEhKr2yW6fjXjslncGOZ2huDtGceUfu+v0rrpoyqMpXE7FSAx49K65dW0t/hw/h0eGbVde/tAXx14zfvWhCEeTt7DJz/TPNUvDsds9jfQalYXCC4t3EEwiJKtxggfl+dc7PDJbbt2QcdMdK2TsZ2ZWXK/KxIIqWMgSAfwkdagWTc5LAgnvUqo/KoCSeRxUsEtTU0zU5bO4RImbyyRlR3rudNvTGhlWNdwz/ABbMn2PrXn1qiwPvZsvjoOldLpVjBcSeZPPsmX/lltJ3cdc1nKyNY3R7n4T+I+gOI7bVZprKeNBsndhjOe7Dgj2NehSWMeqo2q6B9mkvsYfyJx5N6McKQCdkvoeh6Ed6+a1s4JUeGe3AZukm/p9B0rY0/S73w+DdaNfG2fPzbTiKU46Onr6NXBOnFu6djphJrc9u0XxfZC9H2lHt54yNy58t0Pce+O4IFdNeRpM8epaZMkkFwCJbYoNrY/u9x9K8Il8WnxW6w3Aay8RoqoQWBS4x0J/2h2PccVt+FfGMtlfrpuoP9mvY2wA3CyH+lZSg1uaJpnq9xZJrOnC4sbuUKqlJLZm5i/3QegrxrVbKVZ7iRyyywZJDnkgZ4Ir1G7gke4FxCGhuSvDLwG56H2rjNZjN3dPLOQJ3JEgx1/yKyTsacpB8Nbnebuxc/wCjy5IGPuk9cVT1rUpvDshhDyOomDBsdK2vBFpbaRbahJdB1e2kjTcBxhmwD+orlPGh+3Qz3Tlo5LK7KCQcBgRwf5fnTirsT0R6zo+qw61YSokg8u+gWeMn+8Dg/jmuC8bXr3dhDqNzEZJtOl+zymMbpFRj8rj6dCPoazfDPjAQRW9teeVHdRsVh2H5Zh6jHQ1xnjDxPqfh7xTeajpspMcqjzrdxlMd1x9aqnTanoTKehV1aFNUhbyr6NkXJAZcOPUfSuGhMlneCOQqTngr0Fbuq6/Z60DeQQNY3DKDJAvKZ/2fauduwLlfPVzuzz65zXclZWZzt9T9Y/h9Y+dCt3MF3RfwleTnuT/Su7mv4IuFyx9F7Vw2hX7WdtHEoTYOAifMxPv3raQTSZcxzFeu1QBn606b5Y2Mprmdy3dX4lbadw/2F6/iarmVsfcjRe3c1C8F9LkQ2giX+871A+mXco2yTEgdk7mlKTGrFHUrq3ZnGdxBxyc5rKCySgKEyT038Ct+Lw5tYFmGd3Q1cTQgmWZSc1k4tlpnDa14Rh1fTLm3lYF5R94f3vX8K+IPjB8OpfD3iJo7eN8NyjMME49R1xX6MPYAQ7FGP51wvizwBpXiqEpeW4AXjzIx+8z7E/14rWm3AGlLRn5nz6TqEUnz27Fm6BecitXRfDmpXqk/YpxbRNmV1TJGe3PGa+xJf2eUnn2SOkXmMf3kILFEBHBY9z+Qr1Lwx8NdH0S1gtI7aIQQncqFeCfU+prodQzdJLW58jfDH4VaraaomsK6xX0JIghkYFCCMfOOp+g64r3Twj8M9WTVJdQ8S6hBd3EoHzoWHzZ6legAHYV7lF4b0uKRpI7KGOTruRQKeYY7UgonIycEVnJtod7DNIsNMsgoUxiYAZlIrqIGtgBImwsBwQc1y00ybCxgJx3U4NZU+oqhUxyjIPODUBe52WqToscnPJ7CuZ1e7eXTpYra8a2uRt2yqoYjBzggjoenrWLf6+yKVklJ75z1FZY1dZn8zcdvPJPepHc3ob26DZd2Kk8HJqdZthXzGyF5AJ4JrEbxHDGmxPmc8ZHWs251cOWIkzGo5XvUuLC52Z1RZQymXOew9cVSVLq5bFv80YxksflH+NYmk6hHdOAW/dADn0rWv9fhto1FpMTxhQo6k+gHU0bBcde+HdPe2ddSkEybfmiI+Vu/QV5/4hs9DjDW9tpFtIvG1FjGCffjmupXR9S1tjJcSPDCv8Ck5x7+/wBK07LQY7BjJEiLIes8xyce3oKamxNXPmzxN8PfFOrMzwrYaRbSDb+9h8yUjthR90fX8q5G7+BOn29jLd3WprJOBtZrkBV3dyR6elfUurNYIZEl1BWwTzGP5n1ryzxUvhWZHFzY3GoNjrtJX6dQK0VVsOU+PvGPhqy0LUjb2lxFcBOpBHH4A1z/ANlkBYInTg4IxX0D4k0fwzf2s0Vv4bFsdhzIrBcHtwCSa8f1LQrvTAIpLFoLcHKu5/U+lbKSZPKZun2MsX71FVmz2XOK6W11CaLaJXAjBAB21i2LCKVnSYkg5cA5FaguFbUlkjI2NgMNvOKzmykdLD9kDxrMSqT5Aby/uH3robXRjbWbTTs01gJAGuE/5ZFjgbv9k+pqjb2g+z4julCTHCuo3AN6H0ru/Cdu8b/vkDPInlyRf8s5F6EH/wCvXJUdjoicdrnhGHU7MpEjxXafPbXoPMbdun8BPX06iptHsm8c6Zc2d7GIvFGjgrPA/wB6VePmz3B6gjr+Neja14YaK0bUNJDvFCC7afzlhj5tnvjnHfHFcf4r0+80mw0vxt4ckS4WwjKzeUOZrU8sh9ShzweRz6VEJc3usu1tUS+E/EHiDSJhbrCdV02MBXspBiWMf3om74/un8K9Dt/D9l4os2vdPZZ7Y8tGflkT2IPPHpXJaY8PiHy77SZY0u2RbqHJwkinqPY111rfTpbza/pAaK/iLLqFiE5YYwZAvdl6kfxDPeuao3e3U3jaxyGvTf2R4f8AEFqk+GlhVEZvlK7XBBI+nHHtXjtlqs0MOoWtxie1dsukrY2kj5tvbOCD+FeufFS/0/X9AtdQikEd3JbpcNJB9yQ7gGH5kcGvGJNX067gN1d/6PIo8l5olyky4ON6noQejLz+FdmHheOpz1XqQyxvbwxy2Un2iNCHXP3kpurzya/YC4dCLgAgP0DH0IrNkgvLRY2tJ47q0fkuh+6fQj6HisuKeaG7MLs8ZDb9pY4574rp5FcxcjI+blW/1g6/TNXreJhblyDsz1NO8gW16sjqSCcHPQqamt4mDXdqGLBf3qj+lW3oZo/X2zhsrHcthbIiudx2LgGtSF2JHAA9KoebHGNsYX5Tzt4qxDMWII6HpS5RF5wrthjx6UKFI+QfIOh96iluViHzY3Y6Gq0l08gIXgDnjvUiL6iJDnAP4dKdJKpUZYLWYGZf72P5095CuF25J7YoCxZkRAhZl3D1rMnZCQqRMo5JJ4zT59TuIQoaIFc9hziqcl9G2GYtFzyW5J9qY7jd7lR5aoobn5hkmmDzernbnvgVHNcpIPk+ZugH9afFbNHudpXJA+Ybs5/z7UAMmuJYYhtdJJG6IEOaoXd3qTLueCOJTyCfmI/4CP6mn3Wsx2QI8tt2Cfu4Irz3xx8SLbwxok+qarcGCyjyAq48yZyPlRB3Y/8A66LXdhXNa+1T7Os0t3ehYlGTu+VVx6npXivij47eHtKuZFj1JLiVTjEPzD8PWvnz4i/GLX/iDOYmlax0kMTHZwHGR6u38bfoOwrzK4hkiOWOFbqK3jRXUzc+x9I6l+0faTD9zaylsY3MRzWJN+0M0jApA6OBwd3T1rwdbPz4WcZwD0x1qhcFlbpgDrmn7FC5mfQsHx6u3/fMFwpwYgenuPWug0T4uw6tN5czCNm5G56+VElZSCOvqDU63zo6lWII7jtSdJBzs+yrbxrNGTJFdFYhxkHG72Arq/C/jKSW6LTxxiXosgOSq+nP/wBavjTRPGd5p00ZlnaREIwxXJA9B/jXu3w88TjVoUls7UMgI3SSNtX8epP0Fc1SlbY1hK59V22swi1LvKVVACzyN/jxWbqMt7rP7q3eY2x5O1SP0HJ/SszSL+3v44JbtYpZIiGVChCD8+TXp2n6xFJahkiSMEc4GMCsDQ85XwnLt2taNK3czNgflVG78KwJGTLpFuzDg4rqtZ+J+g6dO1oguLq7XP7qCM4J9M1gt8QryQ5bwdqRjbowXcxH0pIDzLxHqnhvw45+1aNdxTHPzCDCnHYEnFeUeI/GPhnUVkjn0i5KsDguwA/Qda+lrjxJ4a19nsdW0y4sjKMGPUbQiPPueQP0rzrxz8G7aO3a68OxG5DKXNkkgkVwP7hPU+1axkJnyNe+SdTk+zgw25OY09Pr60MS5BQlZBySOM11uu6datFI62v2d4+cHAwfQ1xzusZQs2Qw59q13EjuvDmth1SCZgCVwCR1Nen6LNeWDLdwnz4403FCf9Yp/qO1eF2TlZEdCFAIwAeQa9T8CeKFin+yTBWdjgEnP5CuapG5rF2Z7hplyuvaW32aVDKRviYDGD1Arjr26XRbs6pFD5el38gtdWsnHFrcHjzMdAG6H14PesW6vLrwzrf2iwJjtp2+VC2cYxkf1+hrotVnOuwy6pHbefvt/J1OyB4u4D/ED/fXr+VcmzubxZ5tpEF1oj6h4cgY79F1RY4SxwTazgtGc+gYY/4EK9O0LWJ7aY35hkN5ZOBcx4w0sQOGOPVev4GvH9ZsZ9O8WW6RXhunurGGK3lXj7UqTqVP1CHn3U1694on+w63pGtWsZdoSsV/Ep+/E427/wAOefaqrxu0+5pB7o8v+MVza+F5tU02zmJtrrzZ7eNeQolCNhc9h1H4ivAri8aWwlAII9fxr0v46zeR4hsrZpTKLeERhx/EB90/984ryF58pIQPl6fWvSw69xM4a8veZo6ZOXaSNJGCEfMVNaStNeiSCSTbcY3Rsw5I9Pwrm7K4e1uI2GQD1HXOa6MTgN86Awv0dD88TA8Mp/zmtJKzMoyvoXYY/tNu8MgKXY747j+lRxyfZLiK4dcqV2uvcHPFLdXjoUd3Qnr5qnGfqP6CoZZlvLd3Ck+UdzbemPSsmaXP12s48q0hk3H3bIX6VNLdyH5YGPvIRxx6VRspPtMSO42W+Oi8bqsTXIdwqhSoGOOnsKd9CEIrE/MzFmPJJPNWg4Uhu2OtVSRtAIwBz9fah5uBlAfYHpUtjSLJvURiBu556daGv0yoSORz1+UZx9aqAPIxyOQBgYpkuoRRAhNxZeGGePzqRs1Vvk2bfKLHuMVSl8hzgWxBOSTjIrGkvp2cyELCOnJ5/AVC2olvkaa5bdkERjHH1qhE1zciBim0A9d2eF56VE+sSWwLrNGV/wBkYz+NZc7WgYl3uCc5GASScdM1mXxVxtWXYD92JeSvvmi4hdV1Q3zmSK5jRgPuq2cH1Oa+NP2j/Gs2ueNU0l3Bs9HiCBFG0NIwyzEeuMD6V9Yw28FlM8nkr5xzluAfx9a+HvjbZTad8TNcuZIXNvfkTROw4wR0/Ag/pWtH4iJ7HnsuqCOQBAGUeoq6bo6pp7kCPzY/4e5HrXMXLl3zjkHA96msZnCSEOyoeu3jiuszsbmm34ZJFRQhQFtxbFYFzO01y7ueSeB7d6itrlo5GAJJPTPANV5XYO7vw3XHrQBZiG+QAnAJ6+gqy6FVDcEE8YrOUFztU5BAJHcVdsoXuJFhDEL2Oe5HHNJgWImBDKec9MGvf/gjY6o6xOJZQMjy7cYHX+I5HSvL/Bfhm2lnL6ho1zcxoSWbe6KPwA5PevovwZPe+Gr7T7hpp7jSNRXbavG4G3acMjY4YjjPU4OawqPQ0prU910KwuoVIXynY4BM2cDj1rutOhjVlhvUhSeTgqjYBH1rE0i4ikgDLN5crDdg8rn3FW4ry3nxDdeWyyJtaMZZG564PQ5rgb1Nzbm0u1jkaSGFYpCMCXYD+uKx7i8vrcEvMxQEjIA6f4Vbh1l7A7J90unngy7svCPcY5Hv1ql4nsZFtf7S0OVbhVXLInzeZ3AHbPtxSAx57tL3dlVmHdHQHrWbLPY3FlNpvkxR27gq0CqFHPpjp68Vlad4kjvpGIt5IbxCd8co2n/PtWndvaatBukjEd5gplSAR6H60h2PD/HHw4t1jlmtbaeVmyPKWbDNnoeRgmvmjWdJv9LvJbW/tJrSVeTFOhRgO3B7e9fXl34luvD119m8QiDUdKfKCR12yj0O7ow/CuD+LNxYLo1pcaLHbeKvDHLNbT7pLjTX77XBEkanjg5TiuiLCyPnOO4a2YAMcjHWtW11GWNhcQvgo34Ef41HPrOjTK6DREjc524nkGPT64rIhufIk5BKk/MB0xVSVxHvei6ynibw80DKrXcRDoc5O7HQ/UdK2/CeryWwSZXZcEBiB931BHpjivCtH1ybQbxL60dmhyBLGe4ruY9fjsNQF3A5l0+/USFQcgZ6g/j2rkqUjSMjpPEGkhfiN4Zkspf9Cjtppwrf8ssv9w/8COQK6vXb+OwuLea4Zfs0i7ZWP8KscdPTIHHvWLbTLcwTyKgaeVAUcjJCryF/DrTNTibxNp08V18paJohtHJ4/mMZrNq9omsZWPAPihcFfEl9CZN4SZtoLbtoPI5rhi7AAAADPOasaskyX0izuWmRirknJyOKcbUTpH5Iyy8MPU161OKjFI4KjvJsSCQR3GySMPFL8u70OO1bEQ3wqyMHVQcg+nvWdBawXSYiYrOp/wBVnBz6io4tQe1uH2gg5ywxgVTVyFoaKsZLdggUxA/Op4Ke4Hem21+0cQb5Tt4dT6euKdvjudjQKVMnynnj6VFdiMXMZCgSMpDox4/CotfQ0TufrxAphgVM+VFGuOufw96khu97lUDZHBI4/DFUZpS7lUyzgZAP8P4U6AiCIgAeZ1LE5Nc0nYtK5dkmlB2IgL5yctgL7E1VkkuwjFpoY264VCx/M4/lUdxqMcURwwUIPvsenv8AWqtpE+oyK0gPk57nBP4Vk5XNFEY0l4WK/apWz2Ax+gqUafcqMOM+xOTXQW6xWn3VUZHpmoL/AFRUCrHAS7d1+9WsUzNmBPHcQgschAcknFVYrtp5Qwbanb/a/wDrVZkt5NR3POpS3z3blj6k+lC2zu5TaF527yOi45wKZIvmxSW+5V2KMgHGMn6f1rBv7gf8e8XylvvsAMj/AD61q3V1DaRvM8cn2VOFTON4HT8zWNDb3c3mSvCkTT/NtbqvP6cUDSOY1K4WzG4WxdD8wZjyR7mvnT4xX8GqzDzbOOOaPK8c4T+lfUuoWaS3qQNH5ijBbPTAryj4ofDWLxRYT3Fg8cOojJK9PMxxj8fWtIOzG4No+NLnSRKWMYCuvT0NZk9tcqpj2fMnXb6V6F4o8F6x4csFn1K1khRnEanHQ44yRXJf2Pdztuil2BV5yTg811KVznaa3ObltnhMfmZy7bRxzipBYyTS7VZQFGCW6AVc1GCUREEksucemaqRsblooQiqx+8RnirQiWW2ggXyrdnmlIGWA6fStzRdHlYedLbO4f5VKuoIb8altdNtxEZLRS88YBkTuV7j9K0brRHMthdwypJpN26hJYyUZOeVYDjIqXJWGkeu+C/DWoyQRvbvqMKbhiSG4w6N03bD8pFeuS6RZzeEJEIV9Rt547vKKYVkkGVZwoPy7lODj0BrzXw3rmn+HLW3WBY/LC4bMjErj7xbJ4Ge/aum8S+MBB4fuNSkPkxhVifB3EhmHT8s1xzbbOiFkeraF4geK3jYsyYUfJJhyF7EZ+99a328YWsMCvdNDKgO3JjKn8MV83aL46nstQfT71Rc6aoEsMsed6xsMhl+hBrvtL8QKmwvOlxYTjdDMOQc9iKwlEvQ9OPiiJ9qWxkERcZSQcDv970+tNs/F8ug3sk0Q86zmJMkP8IHqPSuKNxb3JZHMyFcfPC210z6DkEcDqKkkhBG62uJAD0wxUn8OgrFqzGjc8YWUWu2TaloZjknzvCucOCOoz2PvXkh8aeI4/8AV3GI0JWSF0UujDqCa7SW4vbWSN7WaSKcZ3b/AJkkHow/qKzL3QrPxrc+dbBdJ8RBQWhUgRXZA/h7MfQ8Ed6aY3EbN4g07xPo81h4jsgWaIlZ4BtbIH3sHjI65HWvKb3wLrumyDUfC18uq2SruH2JgLiNfUx5+Ye65HqK7CxkeK/ezvwI5oW8px0YMPbsR6VxvibQxoOqyyafdS2iH96otyR5RP8AEuDwp61pFknjmurHe6hM3yQ3WSJI9uzYw7Y7H2rKSKQLjhiOpHNdP421DUNWu4ptXxNfINq3ojCtKnbfj7x9+tcsXIJeIlHHUDit7iJ0ujCxjcH3BGa3NMuna1kSFs+UfN2D9cD9a5prt5Q3mEknoT2NSadfvaTJcA7WRvnUnqMc0nG4XPVvDOvyxvFCJCY2+dW6446V29hfus91FG4BZFuIwRnn2rxS3STSbl4EYPGR50RzztPOK9I0m+KR+HrpxuSWaSGQk8gHlf61zzgr3NFI8l+J9jAuvvdW5DLdne6bcbJO/tg5z+Jrm7KR4iyspyBuwO9dH8QrrF6LUDCrlQxOS+0kA/lx+FUdAktrlV+0RuWX5RJ/npXdFvkRyyV5GFfkRXH2hcfN8y47f/Xqa7ni1KBJCojnACsQPvH3rV1jwyYhM1nIJYwMlM5P1FcojPC20jgHkVpF8y0IcWmXIWaBhFKWGDlSK2mdZNOa2kQeY0odZ+uOMYJ7VlOqXKK6lt3eur8HausIvoJI4popofJks5RhblCfmG4cqw4ZT2IqZPqOJ+n8uqJbptA8x2OFUHlv/rU1rl440MxAYdUXqW/z0rO0NY3hdxJ50kYw8zAbmHrx057U25lZY9+795ISsXsTXBUdjqiiaGcXd0WuXAihOREvIBHYeuO5rpLe8iATaQDjODwRXLSWv2C1ij63EvJ55HrmtazEcSJsj4zn3P1rOne+pc3obMszTPwwVemf8KVbfBVQ2WbrjsPSoY59rA4HrV0OEUk4AIyea60c7IJ4tmGyAOgXrVdjHGuVXIHVz1NOe7LNkI2QdoYjjNU5JDIrhmJQdM8UmBn31x9svkXrBaYwAOGfHU/TNQ7y10jgktnBz6etTpZt5ZG4qGJZj6e9R5i89kj2llByCfakUjEnkP21yflCvgkjjGK5qXWbJNXkshdJ9oiy3lEjdjOPx/pW5qc0UErbycFMYUdK+ZfiTdW9z4xQwPNCkJEzsjYLuAfkBH05+tawjc05+VXPT/HWo6ZJZXWm3htnudQBjt43UNl8ZXj68Z96+TL6/OnXGnQxbArwlOmeC7HGPyre1LxYfENvY6rKCNb0uVTKYjgSRBwUcr32n5TjsQfWsP4lWK2HjPUILCDdDa3BSJUXjGAwHH+9XRBWepz1J87ucnrN0WunQkssKgEKMAtnnj8qq6Tot1qV6EilEZf+LFWrbw/rV7KWh02eVieWVcgfjV25/wCEm0qUM8Jtfsy7MFFTA9cd/rVu/QzVup32i/De9Fg9+uq2jPFjIiP6H1/Kuh1n4cX2i+GriN4JXiuNs64mUKM85C9Qa8VXxZrEO4Ldtudskir03xI8QzQeVJqMpQ/3jn/PFZyjIq8TutJuhpdibgvumhGQW4JH90568cc1EPENvrGif2fbIxiN2kn2eR8+R2UKO65zx2H0rye61i5ut5nnd8n14qTTr42dybsSMDGCyYOPm6CnyXDmsfR1jdRaglxFCVja2XylVPvk49fQHt2rS8G3iyyXXh++XyZlCyTKr42s3Imj9Gz95eleXfBzW31HxXHZyMUieJuD0Jzyc+tdLpd3Dr3jefV2laKAXP2VyOnlkkDj/Z2g1hONmzWLue26WtzbGG31IspHyJedCD2BrTnur+yYmRFKD+OPlXH+0P4T+lUYtTbToI4NUiaW0YMjOwyV6cH17EH3ovNVn0R4DIWvNHf/AJbIdzxr/tD+NffqB1zXHJGhfstWsr0mO4iCspxjOc1DqOiwMHe2UMw+YbT90juD2P0rP1qOwu4dtgqfagvmALkCZfUH1Fcxp2rXVnKBKzkKc8DkH0PrU2HexveIrqPV4o5tRhDXsK7PtYG2ZlHTf2ce55FcrqsD67pxjt28zUbH541jA8x07qR/EPQjp3rrLa8tNbhaQsouowQ0bAcexHp71wfiexu9Hv7W/sppIWUkpg4CN6Z9KqPYR5x4khl1GLIjBUnDAdVYdf8A9VcDJbTROUeJlbHRhjNei+OPE1pq05me3W01YriSWP7s2O7Dpn3rgDrN40fzOskajGyRQwx+NboRmyQyowJicL67ahgjkeeSPypW8wdlrSutUDxMpg2SEcOkjAD8OlYUs0zXKs0rsAOhYmtYK5DOvmLn7HM5+dIRDj6dM10Wm6sbPS5YpHJ8m5SZc9umR+tcHa3pMcUfQqR82OvNT6pquJzChwF4bjqeKydO5XNoVvGF3Bda9IIsiJOP8ar6fdXGkubiFVaEkArKMoR71SPl3NwNxO4n8zWzA32VpUfDxSqd0b/0966LpJIycdbmpf6jDdyrPADazbMsjPlT/umuS1WJlmEjqVmfk7eh9619W0ptPSMRv59tIN0UmT09D6GsSW4eRFR2JVTwT1FKCs7ombEti8sTbDtkjG8j1FX7e4KyRSREbnI6dves/TZvs98Qyh1kVoz75HWtbRYEMsDMAVV13LjOecGtJiifeXw48VxQx6/cTagrQyXEY4bKqMHAz7k/rXqcV0ktzayqwIQErg8bv/rZzXyTBJMdJWCKNlsY380xoMec57ue59ugxXpvwd8c6pqt9c6dd2zGDTz/AK8HIz3H4dK4Jq9zpi7Hszy+bqJYfMY2Cqnb3rStr35pBkBUGSx6+9YzTiSeSWJdyiRRwOxHJ+gqZ7lVuFtmDAL8zccN6VinZmrV0dJBc78SEEAevpUvnSzyMYxsCdC65BPYYrOtbhJmDjBJHrj86sPfBV2rtaTNdEXoYNFiSMRKzlyXxkE+v9KpiRSWZm7Zz6j6VnXl9IzYLE5OTn+EVD9pa5Hkqyqr8u44wvp9TQ5IEi3qGoi6DxwvtgU8sByT/hxVXTPLgZ3aUMwQnaRyR3NY9/re3y4YV7lcntj0FQRyw2rh5HZpJAfzPA/rUqQziviZ4mFpK1rHMY5ywPy/y/SvkvxFrcurXt2loWLwzusbAn5gxyw+men4ivoP4k6Uws/t6bpJFmd5XjyxOBgAevOfyryfR/h7JqLHU3gYQS3Gy1tVbbLdvjO0egHVmPQV00pqxE7tWR5SBc2V3HeRlkZWzuxgBh/Otjxvf3dx4l1C7DGKWSRZHVePmKLnHtXsX/Cure5DpcmKW5j4Yx/6tCP4EHTaPxJPWuW174ZX9sdR1NozcLKFbcAckcc49P8ACtfaJsy5WjyRb6/hUH7VcIjHgrIwGR+PaqrRS3MxMju6ryxzliPX3r0+z8F3kFteGayjurcANJbvlWKE5BVscH3qe8+GH9nSWt/ZzyrZS7XhnYfOnqjqONw/IjkZziq5ktRWZ5DPp7QSRFiHjlGY3XkH1/H2q9D4c+0LgXEavgFUJyW+n8q9H1HQNLsrq5FzbS29uoDyRNn7PN2yNo3RN3DDIHpjiumsfhjZSaNMJJYLzS7mRWsbiZgsgzwEJH3ZB6g4Ycjninzq1wSdzxNPD9uZ5Le+Z7J9u5JCMhvw9Ktjwc85hht92+cYjyQVdsfw/wCHUV6lpvh+7Ex0PXrSO/05SRFKw8q6tmHA2SDqOxBBB9q6HTPAS21pd2tv5c8KFJQJPkkUrnque47r0rOVVFqDe54vpMT+E5L6/dys8cRgiDEriRuCfwHNb/g/Wo7fR40dC0ztK5Oe6qSD+lbHi3wtdXq2d9Oly0V28gxMCWjZQAwZuh5xXO6dpLwRRQg7XhkLHPTpjFTzpopRse+aR4ug8UeHITLGN1xD5ZBPSQDI+mQMfhVLR9fWMJG80iWky7ZSrHMTdBIPp39ea808J6yNCRYpH2BW3FG6Hnj8jzVtNZkhvbmIoGhmJcFcYwxyQM1zytc01PSbDVWsNYm0q/cCQP8AuyDhXOMgqfpzUuvPM7tcSKjTIOSoxlexHrXEalp80wh85mZNgCtnkDsfqK0LDX5LwxaZeTA3KDbFISB5g/un34rEZbWdnkSa3kaG5Tsh4NWL/VVv7CW0vlKzRruD9ie1YcxWC5TY2AvUevvTb29imAc5yvGT29qVxnlHieB4bu4Vwc/fye9Ylsq+Szn7rdq7TxgsE8McqqfNi/duAc55rjyCCVT7uM8dq2i9AKd6mznGcjGBWM7kOSc+1auoyI0jJuwykDPY1Qu4wgTpkjoK6KehnIYJ32/u+o5zmki3eYWYkk85PrTEOOi1ftYCzLweTgYqm7ISJYLYSBsrhmH3j2NbMtubi1jmMYBZeeO/Qmtvw94fjuZkeUsFQ85HGaj15I7KSK3jztVi3Xtmufnbdi2tDmba8eSC5srrgMcZP8DjoR9elc7MDFKyPwVYjB9a2NQmBu1uFGElGT9elY9+CJgzcqxyG9a6oI52NAcFWUjcDXffCjTW1PxRAhhMkdu6SuuM8FgB9eTXD26q0vyAybcNzXtfwISGy1q7upTj9zESD1yJC2fyFRXnywZVNXkkfUF/4VgsfD19dRW+0QRMwz/ER3P6Vo/BTwgbbwobry8zTHJdu4PJP5121/Yx39jJaSLshl+VyvUjuK1tPsDDYpb2+IIF4wB29vSuRao2uZp09FllMa7I8AjnqR/Oo7uwuSFnyWOByTWq1j5YJj3EnuTRbsGDJPu47is2i09TCtLssu4nDISCSe9asEiEA7SM/wAQ70raBI9wxiA2nBywxgVSuDJYgA856Y5zSTsOSuJqM6Rtt3DLn6Z/+tWE2qkxmCJgS3VwO1M1KeSYSMx46AAfzrM2+Rb7zwzHdgelEmSomlD8rMUI4ABzz3rD1nURBeZMiqEOQx/Xir8d6scL7ht3YOT2rlhGNZvLmZWJijyo75fFQ52NFElmnGsT3lsIyIrqULAT1dmHRR39/TnJqPVlsNNubPRtMT/RYl+zmUDA9ZNp6ksw5PTgAdKnsZZdPdp4ogt15ZhR2GTCCOoz0Pb8a5S/v2juLQeTIr2z/vN/UcYH4d+PWiNRj5EddaaZb2jMscY8tQQgA4A/xpZVDSvCQD8m3a3C4/pS6dqKXdobhe+UwOKjkYTRFwBlRg570/akumUxpFvJq8VzHIEzHskhb7re3uKybrQ49CNzArtc6Beg4VjlrZu6E/yPQ/WtayuIprdvOYbiTsfGSKga4u7WOQROWik4dSAyvWirE8iOQk8F/abYQy3Ud1DKpMco+8yeh9GHTH+NM0rw/DpdrcQRu72sj5aKXoOAMc8EZANbcZA82RH27TloiSce4PrTvMgnRRFIS6535/i/Ch1n3HyIjY2uowvbzW8YuIG+SdRjd6Bvf371PbaaskKSsoWXG0uoG7GeMGqPmmBydpIb5c1q2U/2UFWBMOA7Lj9BUOdx2OO8XxNBJDpsMjFIAWlTd8pkY5yP0H4Vweuae1reRyqPkmRXwo6+/wDOvQdQRrzUHnZtwm3MCe/rWb8S7BNLfw9Gw2H7DksO/wA5wDVRmJo4a6sluLcLP8jZwkuOp9/5ViX32nT7gQzqAVUdDnI7EHuMV29rCt3atEzKA/c/zFcvqttcRKttdZaDJaGbHK88jPpWid9xWN/RtUN5AkExII6E/XuKh1m2Bc/Lhkbh165rm9Ou5dLuYw4zGpIYex710uo35j+y3MLrNazLyOuGB5z70mhWM9NdlS4C3PMn94jgnuPxqW8vVniZopNpJwQf4TjpVe+tYL6MyW7qsh4EXT8BXMXKS2ykRlmO7cwyeMUJJgQaqZ5HLPhCWBIH+fasWWdlyw4LA5YitmO/W4dzcAsWH3ulY8hM6SZ575rRCMZS7zMxxlj3HBqOWIySHk7m6k9q2ksDMydFB7DqahbTJre5aJ0YMTxu7/StlUSFYqwWTuUAAPHXHWus0Xw9POwJXahHJrb8K+GWuIgd5jJ6MVyD7V1d9/Z2hW7Ga7M1wfuwrx09cdq5qlVtlxj3MyC0GnWylnzt/h9fxrgdakknmmuhnylbYhHQ10V1qFxqBcMxBfsMcL6CrNtYrcRRQmICGLkAjkmojK2rCSvocFqtiI7bTEVQAYyRnqcnnNc9dbnwCcqD0HQV6b4s0h1n0tQmPkYcdx/nNefS2vynAPlhmJIrtozvqc1SI3TrctHMqITNIRGgHdjwBXrnhiwk0ldfLN5tjaxRRzSKf9YyLkxj2LHB9h71wfgWxaa6W9cf6PaP5nI6v2Ar03SYAtrFYkuUlkNzdHI+Y5yE98nr7CufF1be6b4en1Z92WyqGDueK0VvDjCLgeprNjG1QWHfFSmVQuGJ46juKS0RBYZ3kbBYdapwyky72yVGSAaU3CHJ5xVjT7cTwpkdWyTt6e9S3cosWl000m1gRFITjJ/E1FqNnHLDBI527IycfSkeRy5aPCxIcKMfrUF7O13btGriPeMOyenpntWcmXE429jH7wqQRt3naeB6CsjUQ0lkJAMKCPyzzj1rormBxp80ca4Tn5j35pg8PS3OkNaIp85lIQjjJBzge1YuVzVI8+1i+e10LUriEkzRHYM85x2rQ0dBDotuVwJJP3jc9zyavpoZbR5beaAIJ1dWQ9RuGDmsfw3pmpaBALO5jE9hGoSKaPlo/Zh1I9CPx9agZqyIsdzDuQsXGS3YgVyXje2SXTbyaFQk9shnRx1O3Pf05rrrz96ECIXJYA8cAe9cxdyRXrzafDieWYbHfsoPGB+FQ2axVjlPBGtTXdjM8MylY49+0jOR349c966zTL+OWGWFmBcEceorx/wjfzeCfHVxoOoIYxMXtHV+Nu77jZ9zj86667uX02YyA8CT5hngH0zUyTizRxR1MwW2nIibAkJ+U9CKhiuNnmNIGBIyB6ioRfQXttHMhzLHjr61OsyzXCF1yGBwTVRldmUomZ9sW1ulMigrk7iB3Per72sd5Yw39ooEkGRKo5yD3GKwb8mQzkgkEfgKm8H6utvcGwm4SckRvngn+6fStLmY9zvwMgZPPPQ1pIR/Zjqz/OFJyPpgVR1m2S2uGVcqGOcAUbwLGYFsfIBj1zU841G4zTIYn0mwuZMt5KMSeMN83T8cVyHxHujqF4gyrG2QIxz0bqR+FdNdf8SjTLSAuoMC+YwJ4Vic5NedT38V68iMpJDE5I4cnvWkCZIo6XfSW7guf3bnBzU95f21zcXNnLuTzE3FW5BI7g9jVWGyEkxXp15zUOu2bRXkL88KVrZMixknzIDJEWDIpON3OV9K0NPu45I2h2FVbA2A5X2I9Oahe28wbjnc1JDa9WUAFevP5VYmXTbtE2GyMNkMDVa+cqu/G4kEMMcN6VecyNEhOCuQob19qp3Y8pzG5IUdQD7UEnJSWxJO3PcjPb2qaCx862f5cMO/cmu80bwwNUthMjIZFPIA+b3wKh17T7a1geO3yJ0Hzttxg+1PmAxPDLW8sxtL+FCHztYcMD35ravNMsExiNwmSPnPKfQ1iWemSzIkxjMnTgHaAM/xHtXR6fa3Wq3CxMqmNeBGq/KPoaljRDHfLY2/2fTmDykkGVhkKD6Duahl0ya+IM0ZaQ/8tMY5r1TSPCOnQIong8uT+84JGfrReeH0t1LR7HhZucHmo5h2PG1sPsMxiuYyoPIYc/jXb6PpBNgJ0KSkj5WXuPpXQ33haHUbPC7d4OUkA6H0Nc7orXPh66mtrlHRXOOOR9R7VLkMNY0ltUsrceWEdHxux8ynGOK4m68BXOk6TcLPEHy2CVP3e/H516WLmOO4GZ8CTOAelY3iPVcW+wXcOccEDIyPXFKNSUdEFkzJ8AaRa2tobe5Ay77lRh1+vvXoX9g2U3MUIRT2TjmvJRrHkjMkyux7qMY/GtKw8VXMQJiu5ljHTJB/nWFaMpu5pBqKsfcUXn2ttEJiDdyKDgHiPPb3NXLCy8xXllkJHbafvV5Fpfi7U/F2tIy22bWST7qthYl+vUnFexx3AEKxRqigADjgDjoK9G+hyD2tg4+SPjtmpwZoLbaEcbhjhelRLMc9do9qtJdAjbknPWouUQ262cZYO7Fh2IwPyqvdtDIxKDOSCewH4d60TZJcYZeG9CetUZtGd3GCMe3U+1Sy4mbfyo8aKZFCjqT2Fak+o29ppDSRJl2X754xWPd6cbbIJDSd8DgCmw2klxbp5h3W5bpjrj1rnb1sao55PtM43HOGO48etXL1G0zT3mZWVAozlhlyew/Cu6XR1ltoJVUbHGWA7Vha74fe7CJGf9HHLZ5wfpUuDLjI8hmv59R1JomO232FgqdFPT8a6rQvDkOn6dHdpHmRGByRySetR3fhuXTbtrgRqyEYIFblpeQi1eBd2NoY7vWos1uaLU85+PvwvTxXp8etaPGBrVqm5FB/4+EHJXP94c7fy71474a1c61pGLvJYrskV8jkcZ9jX0pb+JZpB9hvs7VOYpDwCPTjpXmni3w3aRXt3ewWqR3E+GcqMB2z1PvV1JpxtYpaHCxyXWjK7I73Fjk5IHMY9/8AGtOz1q3m2tHMxjIxgHpUPh68ng1gWjgBJ22lW7j0q5L4ft7nX54Io1hG7MSIMAZ9qySFJ3LUZS5ScISA6YweoOecVi3VtPbapBs+SQfMoz+taEMclpIYjn5Gx0+YnpVq6ga51WGdxgKApBHpWiM5Kxoa3Mt9NC/AaWMEgDjPrUkUEfkNJc4isoBvllY4Ax0H1qG7mFuY3WFZWkbaMnGxf8aztWaXXJVS8kWOyiHywrwuT0P/AOus1FluSSMzXPM8XxXDWk4CoQREVClsZx9a4GXTbi2mYOjAJ1IH+eK9Z1bQIvD2jWtzMxjnuDu2E9I+gz7nr+VcpHr1teagUmtDJCBxNgdj1NdENEYvUoabp8slizhB5gG4EdxWbq9pPdy427ikYyfX/Oa9P0hNOkmKpKJI2+6F+VQD0z379KoahoT2l5e26MjoG4ZRgkHkcfjTvbUR5FNdf2dFmRN5Q4KjnNVtSuUFtFdabIwfq8bDlf8A61ek6h4JL7mc545B43e1co/hB7eXZtYKT3HGPSrUxWKHhPUYr1DDcghmPGDhcj0qddOku7qTgDa5wc9RWnZaJDZ3IdQqMCDyvH4VvHTfOlkWz5lkwcuMhfWm5it0MPQIrnSLounz24zkJ1ya29XtrXWTBOhCNcrtK/3ZR2PpmpjA2l2Uk10G8nIDbBj6cflVW6sFtbUXKmRomAlRF4BI6H9RSUhNHMf2PeRs/nhh833e1dl4Tt0W9jhXAfGSfU1z2kancXl5eRXBHyHKBjjHtmu2sNBupY01GzdRLGNzp0xVN6CR1t9cBGFvOAu4fKT0P49qxl0wPdgrMsC54ycqa0rHX7HUIfslwoS5+6Y58An3Bpj6Vex75bSVVweBkMD+BrNIdxL6K4soHaBI5GHaNhhv8K5C+vBO225ttjH+JScg1sapqNxZxub6ziK95Y8j+Vcg2qQzOGilOM/8tDmpaGX7CGzuW8m9iEsZPQ9xXQy+B9EkgBhuPsyOMqVUHaKy7OS1kijJ2CdGGMdCM8j6V3MGo6Yse14oTnv6VhUbWxpBLqeX6z8MLNnElteSTMeDucYArj7nwa63It7eZ5Js427QFUepb0r6Clh0yYMURFfH8B4P4Vw/irwvf6nbMmn6stsjZ3IyFfw4qYVG3ZlSgt0f/9k=';
+  })();
+  setAvatar(makeCartoon());
+
+  // ---------- canvases ----------
+  function Cv(id) {
+    const c = $(id), o = { c, ctx: c.getContext('2d'), w: 0, h: 0 };
+    const fit = () => {
+      const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+      if (!w || !h) return;
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      o.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); o.w = w; o.h = h;
+    };
+    new ResizeObserver(fit).observe(c); fit(); return o;
+  }
+  const park = Cv('park'), bars = Cv('bars'), graph = Cv('graph');
+
+  const SKY = {
+    earth:   { a: '#6EC3F2', b: '#DDF3FF', ground: '#C9CDD2', ramp: '#A3A8B0', stars: false },
+    moon:    { a: '#04060C', b: '#1C2230', ground: '#9A9DA5', ramp: '#757882', stars: true },
+    jupiter: { a: '#C46A2C', b: '#F4D3A0', ground: '#BF9A70', ramp: '#957550', stars: false }
+  };
+  const stars = Array.from({ length: 60 }, () => [Math.random(), Math.random() * 0.8, Math.random() * 1.6 + 0.6]);
+  const FONT = (w, s) => `${w} ${s}px "Avenir Next", system-ui, sans-serif`;
+  const INK = '#14171C';
+
+  // ---------- what the skater says after a bad fall ----------
+  const PHRASES = [
+    "Ow, my leg!",
+    "That's a compound fracture for sure.",
+    "I hope you're learning something. I actually like the pain.",
+    "WOW. Hope that doesn't happen again and again.",
+    "Gravity: 1. Me: 0.",
+    "Newton's third law just hit me back.",
+    "My kinetic energy has left the chat.",
+    "I'm fine. (I am not fine.)",
+    "Was that the energy lesson or the pain lesson?",
+    "Ouch. All that potential energy, wasted.",
+    "I regret every choice that led to this moment.",
+    "Tell my family I fell for physics.",
+    "That's going in the group chat.",
+    "My bones just became a hands-on demonstration.",
+    "Please tell me somebody filmed that.",
+    "I think I left a tooth up there.",
+    "Hey, at least the energy was conserved.",
+    "Did anybody get the number on that ramp?",
+    "Ow, my everything.",
+    "I'd like to speak to whoever designed this ramp.",
+    "My teacher said it would be fun.",
+    "That's a lot of thermal energy, mostly in my elbow.",
+    "I felt every single joule of that.",
+    "Who moved the ground?",
+    "Does the nurse take walk-ins?",
+    "Gravity never takes a day off.",
+    "Okay, I get it. Energy is dangerous.",
+    "I just turned potential energy into regret.",
+    "10 out of 10, would not recommend.",
+    "That was NOT in the lesson plan.",
+    "My mass is fine. My dignity is not.",
+    "Can I get a do-over, please?",
+    "Pretty sure I went the wrong way.",
+    "The ramp ended. Nobody told me the ramp ended.",
+    "Friction was not my friend today.",
+    "Why is the ground so... close?",
+    "My whole life flashed before my eyes. It was mostly skateboarding.",
+    "Ow. Note to self: stay below the top.",
+    "I did not agree to this much kinetic energy.",
+    "I'm okay! ...Ow. Not okay.",
+    "That's a sit-down-and-think-about-physics kind of hurt.",
+    "Technically I just proved what goes up must come down.",
+    "My leg does not bend that way.",
+    "The good news: I'm not stuck in the air anymore.",
+    "Splat. That's the sound of unconverted energy.",
+    "Can I get a bandage the size of a door?",
+    "It's not the fall that hurts. It's the sudden stop.",
+    "Ow, my pride.",
+    "Somebody call the school nurse. And a physicist.",
+    "I'm learning so much. Mostly about pain.",
+    "Wheee... ow."
+  ];
+  const PLANET_PHRASES = {
+    moon: ["Moon gravity: it hurts, but slower.", "One small step for me, one giant ow for mankind.", "Falling in slow motion still counts as falling.", "I was promised a soft Moon landing."],
+    jupiter: ["Jupiter gravity is NOT my friend.", "I weigh a ton and I felt every pound.", "That fall had extra gravity. Extra ow.", "Pretty sure I just fell twice as hard as I should have."]
+  };
+
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function thick(ctx, x1, y1, x2, y2, w, col, ol) {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = INK; ctx.lineWidth = w + ol * 2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+
+  // ---------- challenge ----------
+  const LEVELS = [
+    { track: 'half', mu: 0, grav: 'earth', flagX: 5.5,
+      text: 'No friction. Make the skater reach the flag on the right. Where should you release it?',
+      win: 'It reached the flag! With no friction, it can climb back to the height where you released it, but no higher.' },
+    { track: 'half', mu: 0.12, grav: 'earth', flagX: -4.5,
+      text: 'Friction is on. Release the skater on the right side so it reaches the flag on the left.',
+      win: 'You did it! Some energy turned into thermal energy, so you had to start higher than the flag.' },
+    { track: 'coaster', mu: 0, grav: 'earth', flagX: 1,
+      text: 'Roller coaster. Get the skater up to the flag at the top of the second hill.',
+      win: 'Made it! The first hill has to be taller than the second one for the skater to get over.' },
+    { track: 'coaster', mu: 0.06, grav: 'moon', flagX: 1,
+      text: 'Friction is on and you are on the Moon. Reach the flag. Does gravity change how high you must start?',
+      win: 'Nice! Try the same release on Earth. Gravity changes the numbers, but the start height you need stays about the same.' }
+  ];
+  let chOn = false, chIdx = 0;
+  const flagX = () => (chOn ? LEVELS[chIdx].flagX : null);
+
+  function applyLevel() {
+    const L = LEVELS[chIdx];
+    setTrack(L.track, true); P.mu = L.mu; $('fric').value = L.mu;
+    setGrav(L.grav, true);
+    $('chTitle').textContent = `Challenge ${chIdx + 1} of ${LEVELS.length}`;
+    $('chText').textContent = L.text; $('chStatus').textContent = ''; $('chStatus').className = '';
+    $('chPrev').disabled = chIdx === 0; $('chNext').disabled = chIdx === LEVELS.length - 1;
+    syncUI(); parkSkater();
+  }
+
+  // ---------- state ----------
+  // The skater starts off the ramp. A "release" remembers how the skater was last let go, so "Try again" can repeat it.
+  const parkRelease = () => track.key === 'pendulum' ? { type: 'track', x: 0 } : { type: 'floor', x: track.xmin - 2.2 };
+  function applyRelease(rel) {
+    S.t = 0; airT = 0; crash = null; toast = null;
+    if (rel.type === 'track') { Physics.reset(S, track, P, rel.x); firstContactX = S.x; apex = { x: S.x, h: track.hAt(S.x) }; }
+    else if (rel.type === 'air') { Physics.placeAir(S, track, P, rel.x, rel.y, 0, 0, 0); firstContactX = null; apex = { x: rel.x, h: rel.y }; }
+    else { Physics.placeFloor(S, track, P, rel.x); firstContactX = null; apex = { x: rel.x, h: 0 }; }
+    hist = []; tHist = []; acc = 0; won = false; confetti = [];
+  }
+  function replay() { hint = !lastRelease; applyRelease(lastRelease || parkRelease()); }
+  function parkSkater() { lastRelease = null; replay(); }
+  function setTrack(key, quiet) {
+    track = Physics.createTrack(key); lastRelease = null; if (!quiet) replay();
+  }
+  function setGrav(k, quiet) {
+    gravKey = k; P.g = Physics.GRAV[k]; if (!quiet) replay();
+  }
+  const fricWord = mu => mu === 0 ? 'None' : mu < 0.07 ? 'A little' : mu < 0.16 ? 'Some' : 'A lot';
+  function syncUI() {
+    document.querySelectorAll('#trackSeg [data-track]').forEach(b => b.setAttribute('aria-pressed', b.dataset.track === track.key));
+    document.querySelectorAll('#gravSeg [data-grav]').forEach(b => b.setAttribute('aria-pressed', b.dataset.grav === gravKey));
+    $('fricOut').textContent = fricWord(P.mu); $('massOut').textContent = P.m + ' kg'; $('mass').value = P.m;
+    $('playBtn').textContent = paused ? 'Play' : 'Pause';
+    $('slowBtn').setAttribute('aria-pressed', slow); $('lineBtn').setAttribute('aria-pressed', showLine); $('markBtn').setAttribute('aria-pressed', showMarks);
+    $('chBtn').setAttribute('aria-pressed', chOn);
+  }
+
+  // ---------- controls ----------
+  $('trackSeg').addEventListener('click', e => { const b = e.target.closest('[data-track]'); if (!b) return; chOn = false; $('challenge').hidden = true; setTrack(b.dataset.track); syncUI(); });
+  $('gravSeg').addEventListener('click', e => { const b = e.target.closest('[data-grav]'); if (!b) return; setGrav(b.dataset.grav); syncUI(); });
+  $('fric').addEventListener('input', e => { P.mu = +e.target.value; syncUI(); });
+  $('mass').addEventListener('input', e => { P.m = +e.target.value; syncUI(); replay(); });
+  $('playBtn').addEventListener('click', () => { paused = !paused; syncUI(); });
+  $('slowBtn').addEventListener('click', () => { slow = !slow; syncUI(); });
+  $('resetBtn').addEventListener('click', () => replay());
+  $('parkBtn').addEventListener('click', () => parkSkater());
+  $('lineBtn').addEventListener('click', () => { showLine = !showLine; syncUI(); });
+  $('markBtn').addEventListener('click', () => { showMarks = !showMarks; syncUI(); });
+  $('chBtn').addEventListener('click', () => {
+    chOn = !chOn; $('challenge').hidden = !chOn;
+    if (chOn) applyLevel(); else syncUI();
+  });
+  $('chPrev').addEventListener('click', () => { if (chIdx > 0) { chIdx--; applyLevel(); } });
+  $('chNext').addEventListener('click', () => { if (chIdx < LEVELS.length - 1) { chIdx++; applyLevel(); } });
+  $('graphTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-g]'); if (!b) return; graphMode = b.dataset.g;
+    document.querySelectorAll('#graphTabs [data-g]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  });
+
+  // ---------- pick up, carry, and let go of the skater ----------
+  function view() {
+    const W = park.w, H = park.h, sc = Math.min(W / 30, (H - 46) / 12.9);
+    return { W, H, sc, X: x => W / 2 + x * sc, Y: y => H - 26 - (y + 1.2) * sc,
+             wx: px => (px - W / 2) / sc, wy: py => (H - 26 - py) / sc - 1.2 };
+  }
+  function skaterPos() {
+    if (S.mode === 'track') return { x: S.x, y: track.hAt(S.x), th: Math.atan(track.sAt(S.x)) };
+    if (S.mode === 'air') return { x: S.ax, y: S.ay, th: Math.abs(S.avx) > 0.5 ? -Math.sign(S.avx) * airT * 5 : 0 };  // tumbles when it flies off
+    if (S.mode === 'held') return { x: S.ax, y: S.ay, th: S.snapped ? Math.atan(track.sAt(S.ax)) : 0 };
+    return { x: S.ax, y: 0, th: crash ? crash.lie : 0 };
+  }
+  function pointerWorld(e) {
+    const r = park.c.getBoundingClientRect(), v = view();
+    return { x: v.wx(e.clientX - r.left), y: v.wy(e.clientY - r.top) };
+  }
+  function hitSkater(e) {
+    const r = park.c.getBoundingClientRect(), v = view(), px = e.clientX - r.left, py = e.clientY - r.top, p = skaterPos();
+    const cx = v.X(p.x), cy = track.key === 'pendulum' ? v.Y(p.y) : v.Y(p.y) - (crash ? 0.6 : 1.3) * v.sc;   // aim at the middle of the body
+    return Math.hypot(px - cx, py - cy) < Math.max(2.4 * v.sc, 58);
+  }
+  function moveHeld(e) {
+    const w = pointerWorld(e);
+    if (track.key === 'pendulum') {                                  // the rope keeps it on the arc
+      Physics.reset(S, track, P, w.x + dragOff.x); firstContactX = S.x; apex = { x: S.x, h: track.hAt(S.x) };
+      return;
+    }
+    const F = Physics.FENCE - 0.2;
+    const x = Math.max(-F, Math.min(F, w.x + dragOff.x)); let y = Math.max(0, Math.min(10.4, w.y + dragOff.y)), snapped = false;
+    if (x >= track.xmin && x <= track.xmax && y <= track.hAt(x) + 0.8) { y = track.hAt(x); snapped = true; }   // close enough: it sits on the ramp
+    Physics.hold(S, P, x, y); S.snapped = snapped; apex = { x, h: y };
+  }
+  function endDrag() {
+    if (!dragging) return; dragging = false; park.c.style.cursor = 'default';
+    if (track.key === 'pendulum') lastRelease = { type: 'track', x: S.x };
+    else if (S.snapped) lastRelease = { type: 'track', x: S.ax };
+    else if (S.ay <= 0.15) lastRelease = { type: 'floor', x: S.ax };
+    else lastRelease = { type: 'air', x: S.ax, y: S.ay };                // let go above the ramp: it drops
+    applyRelease(lastRelease);
+  }
+  park.c.addEventListener('pointerdown', e => {
+    if (!hitSkater(e)) return;
+    dragging = true; hint = false; park.c.setPointerCapture(e.pointerId); park.c.style.cursor = 'grabbing';
+    const p = skaterPos(), w = pointerWorld(e); dragOff = { x: p.x - w.x, y: p.y - w.y };
+    crash = null; toast = null; S.t = 0; airT = 0; hist = []; tHist = []; won = false; acc = 0;
+    if (track.key !== 'pendulum') Physics.hold(S, P, p.x, p.y);
+    moveHeld(e);
+  });
+  park.c.addEventListener('pointermove', e => { if (dragging) moveHeld(e); else if (e.pointerType === 'mouse') park.c.style.cursor = hitSkater(e) ? 'grab' : 'default'; });
+  park.c.addEventListener('pointerup', endDrag); park.c.addEventListener('pointercancel', endDrag);
+
+  // ---------- photo flow ----------
+  const modal = $('photoModal'); let stream = null, src = null; const adj = { zoom: 1.25, cx: 0, cy: 0 };
+  const showStep = s => { $('camStep').hidden = s !== 'cam'; $('adjStep').hidden = s !== 'adj'; };
+  function stopCam() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } $('cam').srcObject = null; }
+  function closeModal() { stopCam(); modal.hidden = true; }
+  async function openCamera() {
+    $('welcome').hidden = true; modal.hidden = false; showStep('cam'); $('camError').hidden = true; $('snapBtn').hidden = false;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return camFail('The camera is not available in this browser.');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 960 } }, audio: false });
+      const v = $('cam'); v.srcObject = stream; await v.play();
+    } catch (err) { camFail('The camera is blocked. You can allow it in Settings, or choose a photo instead.'); }
+  }
+  function camFail(msg) { $('camErrorText').textContent = msg; $('camError').hidden = false; $('snapBtn').hidden = true; }
+  function toAdjust(canvas) {
+    src = canvas; adj.zoom = 1.25; $('zoom').value = 1.25; adj.cx = src.width / 2; adj.cy = src.height / 2;
+    clampAdj(); showStep('adj'); modal.hidden = false; drawAdj();
+  }
+  const cropSide = () => Math.min(src.width, src.height) / adj.zoom;
+  function clampAdj() {
+    const s = cropSide() / 2;
+    adj.cx = Math.min(src.width - s, Math.max(s, adj.cx)); adj.cy = Math.min(src.height - s, Math.max(s, adj.cy));
+  }
+  function drawAdj() {
+    const c = $('adj'), a = c.getContext('2d'), s = cropSide();
+    a.clearRect(0, 0, 300, 300); a.fillStyle = '#ccc'; a.fillRect(0, 0, 300, 300);
+    a.drawImage(src, adj.cx - s / 2, adj.cy - s / 2, s, s, 0, 0, 300, 300);
+    a.save(); a.fillStyle = 'rgba(0,0,0,.5)'; a.beginPath(); a.rect(0, 0, 300, 300); a.arc(150, 150, 140, 0, Math.PI * 2, true); a.fill('evenodd'); a.restore();
+    a.strokeStyle = '#fff'; a.lineWidth = 3; a.setLineDash([8, 6]); a.beginPath(); a.arc(150, 150, 140, 0, Math.PI * 2); a.stroke(); a.setLineDash([]);
+  }
+  $('zoom').addEventListener('input', e => { adj.zoom = +e.target.value; clampAdj(); drawAdj(); });
+  let panning = null;
+  $('adj').addEventListener('pointerdown', e => { panning = { x: e.clientX, y: e.clientY }; $('adj').setPointerCapture(e.pointerId); });
+  $('adj').addEventListener('pointermove', e => {
+    if (!panning) return; const r = $('adj').getBoundingClientRect(), k = cropSide() / r.width;
+    adj.cx -= (e.clientX - panning.x) * k; adj.cy -= (e.clientY - panning.y) * k; panning = { x: e.clientX, y: e.clientY };
+    clampAdj(); drawAdj();
+  });
+  $('adj').addEventListener('pointerup', () => panning = null);
+  $('snapBtn').addEventListener('click', () => {
+    const v = $('cam'); if (!v.videoWidth) return;
+    const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+    const a = c.getContext('2d'); a.translate(c.width, 0); a.scale(-1, 1); a.drawImage(v, 0, 0);
+    stopCam(); toAdjust(c);
+  });
+  $('useBtn').addEventListener('click', () => {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const s = cropSide();
+    c.getContext('2d').drawImage(src, adj.cx - s / 2, adj.cy - s / 2, s, s, 0, 0, 256, 256);
+    userPicked = true; setAvatar(c); src = null; closeModal(); $('welcome').hidden = true;
+  });
+  $('retakeBtn').addEventListener('click', () => { src = null; openCamera(); });
+  const cancelAll = () => { src = null; closeModal(); $('welcome').hidden = false; };
+  $('camCancel').addEventListener('click', cancelAll); $('adjCancel').addEventListener('click', cancelAll);
+  $('camFallback').addEventListener('click', () => $('file').click());
+  $('file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      stopCam(); $('welcome').hidden = true; toAdjust(c);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+  });
+  $('wCam').addEventListener('click', openCamera);
+  $('wPick').addEventListener('click', () => $('file').click());
+  $('wDog').addEventListener('click', () => { userPicked = true; setAvatar(dogCanvas); $('welcome').hidden = true; });
+  $('wCartoon').addEventListener('click', () => { userPicked = true; setAvatar(makeCartoon()); $('welcome').hidden = true; });
+  $('wSkip').addEventListener('click', () => { $('welcome').hidden = true; });
+  $('skaterBtn').addEventListener('click', () => { $('welcome').hidden = false; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopCam(); });
+
+  // ---------- drawing: park ----------
+  // body width follows mass: slim at 20 kg, normal at 60 kg, wide at 100 kg
+  const widthFactor = () => 0.6 + 0.8 * (P.m - 20) / 80;
+
+  function drawSkater(ctx, px, py, th, u) {
+    const ol = Math.max(1.5, u * 0.06), cosT = Math.cos(th), sinT = Math.sin(th), wf = widthFactor(), bs = Math.sqrt(wf);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(-th); ctx.lineJoin = 'round';
+    ctx.fillStyle = '#FFE066'; ctx.strokeStyle = INK; ctx.lineWidth = ol;
+    for (const wx of [-0.5 * bs, 0.5 * bs]) { ctx.beginPath(); ctx.arc(wx * u, -0.14 * u, 0.14 * u, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = '#FF6A2B'; rr(ctx, -0.85 * bs * u, -0.38 * u, 1.7 * bs * u, 0.12 * u, 0.06 * u); ctx.fill(); ctx.stroke();
+    thick(ctx, -0.35 * bs * u, -0.4 * u, -0.17 * wf * u, -1.0 * u, 0.26 * wf * u, '#2F4B8A', ol);
+    thick(ctx, 0.35 * bs * u, -0.4 * u, 0.17 * wf * u, -1.0 * u, 0.26 * wf * u, '#2F4B8A', ol);
+    thick(ctx, -0.3 * wf * u, -1.55 * u, -(0.65 + 0.3 * wf) * u, -1.1 * u, (0.14 + 0.06 * wf) * u, '#F2C09A', ol);
+    thick(ctx, 0.3 * wf * u, -1.55 * u, (0.65 + 0.3 * wf) * u, -1.1 * u, (0.14 + 0.06 * wf) * u, '#F2C09A', ol);
+    ctx.fillStyle = '#7B4DFF'; ctx.strokeStyle = INK; ctx.lineWidth = ol;
+    rr(ctx, -0.36 * wf * u, -1.75 * u, 0.72 * wf * u, 0.9 * u, Math.min(0.2, 0.3 * wf) * u); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // head stays mostly upright so the face is easy to see
+    const hr = 0.72 * u, hd = 2.35 * u, hx = px - hd * sinT, hy = py - hd * cosT;
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(-th * 0.3);
+    ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(avatar, -hr, -hr, 2 * hr, 2 * hr); ctx.restore();
+    ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.lineWidth = Math.max(2, u * 0.1); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, u * 0.05); ctx.strokeStyle = INK; ctx.beginPath(); ctx.arc(0, 0, hr + u * 0.05, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHead(ctx, cx, cy, hr, rot, u) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(avatar, -hr, -hr, 2 * hr, 2 * hr); ctx.restore();
+    ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.lineWidth = Math.max(2, u * 0.1); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, u * 0.05); ctx.strokeStyle = INK; ctx.beginPath(); ctx.arc(0, 0, hr + u * 0.05, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // crane, ground and swing path for the wrecking ball
+  function drawPendScenery(ctx, v, sky) {
+    const { W, H, sc, X, Y } = v, gyl = Y(-1.1), leg = '#5B6475';
+    ctx.fillStyle = sky.ground; ctx.fillRect(0, gyl, W, H - gyl);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, gyl); ctx.lineTo(W, gyl); ctx.stroke();
+    thick(ctx, X(-4), gyl, X(-0.9), Y(10.7), 0.5 * sc, leg, 3);
+    thick(ctx, X(4), gyl, X(0.9), Y(10.7), 0.5 * sc, leg, 3);
+    thick(ctx, X(-1.7), Y(10.7), X(1.7), Y(10.7), 0.6 * sc, leg, 3);
+    ctx.setLineDash([4, 7]); ctx.strokeStyle = 'rgba(20,23,28,.55)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = track.xmin; x <= track.xmax + 1e-6; x += 0.1) { const px = X(x), py = Y(track.hAt(x)); x === track.xmin ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(X(0), Y(10), 0.28 * sc, 0, Math.PI * 2); ctx.fillStyle = '#FFE066'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  }
+
+  // rope, wrecking ball, and a rider holding on
+  function drawPendBall(ctx, v) {
+    const { sc, X, Y } = v, px = X(S.x), py = Y(track.hAt(S.x)), vx = X(0), vy = Y(10), r = sc * 0.95, u = sc * 0.7, ol = 2.5, wf = widthFactor();
+    thick(ctx, vx, vy, px, py, Math.max(3, sc * 0.14), '#7A6548', 2);
+    const gr = ctx.createRadialGradient(px - r * 0.35, py - r * 0.35, r * 0.1, px, py, r); gr.addColorStop(0, '#9AA2B3'); gr.addColorStop(1, '#2E3440');
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = gr; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+    const dl = Math.hypot(vx - px, vy - py) || 1, dx = (vx - px) / dl, dy = (vy - py) / dl;
+    ctx.beginPath(); ctx.arc(px + dx * r, py + dy * r, 0.14 * sc, 0, Math.PI * 2); ctx.fillStyle = '#FFE066'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+    const hipY = py - r * 0.92, shY = hipY - 0.85 * u;
+    thick(ctx, px - 0.15 * wf * u, hipY, px - r * 0.85, py - r * 0.3, 0.3 * wf * u, '#2F4B8A', ol);
+    thick(ctx, px + 0.15 * wf * u, hipY, px + r * 0.85, py - r * 0.3, 0.3 * wf * u, '#2F4B8A', ol);
+    ctx.fillStyle = '#7B4DFF'; ctx.strokeStyle = INK; ctx.lineWidth = ol; rr(ctx, px - 0.38 * wf * u, hipY - 1.0 * u, 0.76 * wf * u, 1.1 * u, Math.min(0.2, 0.3 * wf) * u); ctx.fill(); ctx.stroke();
+    const hx = px + dx * (r + 1.5 * u), hy = py + dy * (r + 1.5 * u);
+    thick(ctx, px - 0.3 * wf * u, shY, hx - 0.1 * u, hy, (0.15 + 0.07 * wf) * u, '#F2C09A', ol);
+    thick(ctx, px + 0.3 * wf * u, shY, hx + 0.1 * u, hy, (0.15 + 0.07 * wf) * u, '#F2C09A', ol);
+    drawHead(ctx, px, hipY - 1.0 * u - 0.5 * u, 0.7 * u, -Math.atan(track.sAt(S.x)) * 0.2, u);
+  }
+
+  // speech bubble with a tail pointing at (ax, ay)
+  function drawBubble(ctx, text, ax, ay, W, fill) {
+    ctx.save(); ctx.font = FONT(800, 14); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const maxW = Math.min(230, W - 40), lines = []; let cur = '';
+    text.split(' ').forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; });
+    lines.push(cur);
+    const lw = Math.max(...lines.map(l => ctx.measureText(l).width)), bw = lw + 26, lh = 19, bh = lines.length * lh + 16;
+    const bx = Math.min(W - bw - 6, Math.max(6, ax - bw / 2)), by = Math.max(6, ay - bh - 14);
+    ctx.fillStyle = fill || '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
+    rr(ctx, bx, by, bw, bh, 14); ctx.fill(); ctx.stroke();
+    const tx = Math.min(bx + bw - 20, Math.max(bx + 20, ax));
+    ctx.beginPath(); ctx.moveTo(tx - 9, by + bh); ctx.lineTo(Math.min(bx + bw - 2, Math.max(bx + 2, ax)), by + bh + 13); ctx.lineTo(tx + 9, by + bh); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = fill || '#fff'; ctx.fillRect(tx - 8, by + bh - 4, 16, 6);
+    ctx.fillStyle = INK; lines.forEach((l, i) => ctx.fillText(l, bx + 13, by + 8 + lh / 2 + i * lh));
+    ctx.restore();
+  }
+
+  function drawPark() {
+    const { ctx } = park, v = view(), { W, H, sc, X, Y } = v, sky = SKY[gravKey];
+    if (!W) return;
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, sky.a); g.addColorStop(1, sky.b);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    if (sky.stars) { ctx.fillStyle = '#fff'; stars.forEach(s => { ctx.globalAlpha = 0.5 + s[2] / 4; ctx.beginPath(); ctx.arc(s[0] * W, s[1] * H, s[2] * 0.8, 0, 7); ctx.fill(); }); ctx.globalAlpha = 1; }
+    // height gridlines
+    ctx.font = FONT(700, 11); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (let m = 0; m <= 11; m++) {
+      const y = Y(m); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      if (m % 2 === 0 && m > 0) { ctx.fillStyle = gravKey === 'moon' ? '#cfd6e6' : 'rgba(20,23,28,.7)'; ctx.fillText(m + ' m', 6, y - 8); }
+    }
+    const pend = track.key === 'pendulum';
+    if (pend) drawPendScenery(ctx, v, sky); else {
+    // park floor (height 0 m)
+    ctx.fillStyle = sky.ground; ctx.fillRect(0, Y(0), W, H - Y(0));
+    ctx.strokeStyle = 'rgba(20,23,28,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke();
+    // the ramp itself
+    ctx.beginPath(); ctx.moveTo(X(track.xmin), H); ctx.lineTo(X(track.xmin), Y(track.hAt(track.xmin)));
+    for (let x = track.xmin; x <= track.xmax + 1e-6; x += 0.1) ctx.lineTo(X(x), Y(track.hAt(x)));
+    ctx.lineTo(X(track.xmax), H); ctx.closePath(); ctx.fillStyle = sky.ramp; ctx.fill();
+    ctx.beginPath(); for (let x = track.xmin; x <= track.xmax + 1e-6; x += 0.1) { const px = X(x), py = Y(track.hAt(x)); x === track.xmin ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+    ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#1B1E24'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.stroke();
+    ctx.strokeStyle = '#1B1E24'; ctx.lineWidth = 4; ctx.beginPath();
+    ctx.moveTo(X(track.xmin), Y(track.hAt(track.xmin))); ctx.lineTo(X(track.xmin), Y(0)); ctx.moveTo(X(track.xmax), Y(track.hAt(track.xmax))); ctx.lineTo(X(track.xmax), Y(0)); ctx.stroke();
+    }
+    // zero line
+    ctx.setLineDash([6, 5]); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.textAlign = 'right'; ctx.fillStyle = INK; ctx.font = FONT(700, 11); ctx.fillText('Lowest point: height 0 m', W - 8, Y(0) + 11);
+    // climb line
+    const en = Physics.energies(S, track, P);
+    if (showLine) {
+      const yl = (S.E - Math.max(0, S.TH)) / (P.m * P.g);
+      ctx.setLineDash([10, 6]); ctx.strokeStyle = '#FF6A2B'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, Y(yl)); ctx.lineTo(W, Y(yl)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#B23C00'; ctx.font = FONT(800, 12); ctx.fillText('Highest it can climb right now', W - 8, Y(yl) - 10);
+    }
+    // height markers: ruler for current height + dot where it will climb to
+    if (showMarks) {
+      const sp = skaterPos(), sx = X(sp.x), sy = Y(sp.y), z = Y(0), hNow = sp.y, tp = apex;
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx, z); ctx.lineTo(sx, sy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx - 7, z); ctx.lineTo(sx + 7, z); ctx.stroke();
+      if (tp) {
+        const tx = X(tp.x), ty = Y(tp.h);
+        ctx.setLineDash([3, 6]); ctx.strokeStyle = '#B23C00'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(sx, ty); ctx.lineTo(tx, ty); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(tx, ty, 9, 0, Math.PI * 2); ctx.fillStyle = '#FFE066'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+        const lt = 'Was at ' + tp.h.toFixed(1) + ' m'; ctx.font = FONT(800, 12); const lw = ctx.measureText(lt).width + 14;
+        const lx = Math.min(W - lw - 4, Math.max(4, tx - lw / 2)), ly = ty - 36;
+        ctx.fillStyle = '#fff'; rr(ctx, lx, ly, lw, 22, 8); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+        ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lt, lx + lw / 2, ly + 12);
+      }
+      const ht = 'Now ' + hNow.toFixed(1) + ' m', hw = ctx.measureText(ht).width + 14, hy = (z + sy) / 2 - 11;
+      const hx = Math.max(4, sx - hw - 8);
+      ctx.font = FONT(800, 12); ctx.fillStyle = '#fff'; rr(ctx, hx, hy, hw, 22, 8); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ht, hx + hw / 2, hy + 12);
+      ctx.restore();
+    }
+    // flag
+    const fx = flagX();
+    if (fx !== null) {
+      const px = X(fx), py = Y(track.hAt(fx)), h = sc * 2.2;
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - h); ctx.stroke();
+      ctx.fillStyle = '#E63946'; ctx.beginPath(); ctx.moveTo(px, py - h); ctx.lineTo(px + sc * 1.3, py - h + sc * 0.45); ctx.lineTo(px, py - h + sc * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    // dotted drop line while carrying the skater above the ramp
+    const sp0 = skaterPos(), u0 = sc * 0.8, now = performance.now();
+    if (dragging && !pend && S.mode === 'held' && !S.snapped && sp0.x >= track.xmin && sp0.x <= track.xmax) {
+      ctx.setLineDash([3, 6]); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(sp0.x), Y(sp0.y)); ctx.lineTo(X(sp0.x), Y(track.hAt(sp0.x))); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // skater
+    if (pend) drawPendBall(ctx, v);
+    else if (crash) drawSkater(ctx, X(sp0.x), Y(0) - 0.9 * u0, sp0.th, u0);   // lying on the floor
+    else drawSkater(ctx, X(sp0.x), Y(sp0.y), sp0.th, u0);
+    // speech bubbles
+    if (crash && now < crash.until) drawBubble(ctx, crash.text, X(sp0.x) - 2.35 * u0 * Math.sin(crash.lie), Y(0) - 2.2 * u0, W, '#FFF7C2');
+    else if (hint && !dragging && !won) {
+      if (pend) drawBubble(ctx, 'Drag the ball back and let go!', X(S.x), Y(track.hAt(S.x)) - sc * 2.6, W, '#D9ECFF');
+      else if (S.mode === 'floor') drawBubble(ctx, 'Drag me onto the ramp, or drop me from above!', X(sp0.x), Y(0) - 2.75 * u0, W, '#D9ECFF');
+    }
+    if (toast && now < toast.until) {
+      ctx.save(); ctx.font = FONT(800, 13); const tw = ctx.measureText(toast.text).width + 22; ctx.fillStyle = '#fff'; rr(ctx, 10, H - 46, Math.min(tw, W - 20), 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(toast.text, 21, H - 31); ctx.restore();
+    }
+    // readouts
+    const bx = W - 128, by = 10;
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(ctx, bx, by, 118, 50, 10); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = INK; ctx.font = FONT(700, 13);
+    const spd = S.mode === 'air' ? Math.hypot(S.avx, S.avy) : S.mode === 'track' ? Math.abs(S.v) : 0;
+    ctx.fillText('Height ' + sp0.y.toFixed(1) + ' m', bx + 10, by + 17); ctx.fillText('Speed ' + spd.toFixed(1) + ' m/s', bx + 10, by + 37);
+    // confetti
+    if (confetti.length) {
+      confetti.forEach(c => { c.x += c.vx; c.y += c.vy; c.vy += 0.15; c.life--; ctx.fillStyle = c.c; ctx.fillRect(c.x, c.y, 7, 5); });
+      confetti = confetti.filter(c => c.life > 0 && c.y < H);
+    }
+  }
+
+  // ---------- drawing: bars ----------
+  const COL = { KE: '#1FB36B', PE: '#2F6FED', TH: '#FF6A2B', E: '#3B4252' };
+  const fmt = n => Math.round(n).toLocaleString('en-US') + ' J';
+  function drawBars(en, scaleMax) {
+    const { ctx, w: W, h: H } = bars; if (!W) return; ctx.clearRect(0, 0, W, H);
+    const pad = { l: 8, r: 8, t: 22, b: 30 }, gap = 10, bw = (W - pad.l - pad.r - gap * 3) / 4, base = H - pad.b, mh = base - pad.t;
+    const items = [['Kinetic', en.KE, COL.KE], ['Potential', en.PE, COL.PE], ['Thermal', en.TH, COL.TH], ['Total', en.E, COL.E]];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    items.forEach((it, i) => {
+      const x = pad.l + i * (bw + gap);
+      ctx.fillStyle = '#EEF0F3'; ctx.fillRect(x, pad.t, bw, mh);
+      if (i < 3) { const h = Math.min(mh, it[1] / scaleMax * mh); ctx.fillStyle = it[2]; ctx.fillRect(x, base - h, bw, h); }
+      else {
+        let y = base;[['KE', en.KE], ['PE', en.PE], ['TH', en.TH]].forEach(([k, val]) => {
+          const h = val / scaleMax * mh; ctx.fillStyle = COL[k]; ctx.fillRect(x, y - h, bw, h); y -= h;
+        });
+      }
+      ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.strokeRect(x, pad.t, bw, mh);
+      ctx.fillStyle = INK; ctx.font = FONT(700, 12); ctx.fillText(fmt(it[1]), x + bw / 2, pad.t - 6);
+      ctx.font = FONT(800, 13); ctx.fillText(it[0], x + bw / 2, H - 10);
+    });
+  }
+
+  // ---------- drawing: graph ----------
+  function legend(ctx, W) {
+    const items = [['Kinetic', COL.KE], ['Potential', COL.PE], ['Thermal', COL.TH], ['Total', COL.E]]; let x = 46;
+    ctx.font = FONT(700, 12); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    items.forEach(([n, c]) => { ctx.fillStyle = c; ctx.fillRect(x, 8, 12, 12); ctx.fillStyle = INK; ctx.fillText(n, x + 17, 14); x += ctx.measureText(n).width + 36; });
+  }
+  function drawGraph(en, scaleMax) {
+    const { ctx, w: W, h: H } = graph; if (!W) return; ctx.clearRect(0, 0, W, H);
+    const l = 46, r = 10, t = 28, b = 34, pw = W - l - r, ph = H - t - b;
+    const gy = e => t + ph - Math.min(1, e / scaleMax) * ph;
+    ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l, t); ctx.lineTo(l, t + ph); ctx.lineTo(l + pw, t + ph); ctx.stroke();
+    ctx.fillStyle = INK; ctx.font = FONT(700, 11); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText('0', l - 5, t + ph); ctx.fillText(Math.round(scaleMax).toLocaleString('en-US'), l - 5, t + 6);
+    ctx.save(); ctx.translate(11, t + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('Energy (J)', 0, 0); ctx.restore();
+    legend(ctx, W);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    if (graphMode === 'pos') {
+      const gx = x => l + (x - track.xmin) / (track.xmax - track.xmin) * pw;
+      ctx.fillText('Position along the track (m)', l + pw / 2, H - 4);
+      ctx.fillText(track.xmin, l, H - 18); ctx.fillText('0', gx(0), H - 18); ctx.fillText(track.xmax, l + pw, H - 18);
+      ctx.beginPath(); for (let x = track.xmin; x <= track.xmax + 1e-6; x += 0.1) { const px = gx(x), py = gy(P.m * P.g * track.hAt(x)); x === track.xmin ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+      ctx.strokeStyle = COL.PE; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.setLineDash([7, 5]); ctx.strokeStyle = COL.E; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l, gy(S.E)); ctx.lineTo(l + pw, gy(S.E)); ctx.stroke(); ctx.setLineDash([]);
+      hist.forEach(p => { ctx.fillStyle = COL.KE; ctx.fillRect(gx(p.x) - 1, gy(p.ke) - 1, 2.5, 2.5); if (p.th > 0.5) { ctx.fillStyle = COL.TH; ctx.fillRect(gx(p.x) - 1, gy(p.th) - 1, 2.5, 2.5); } });
+      [[en.PE, COL.PE], [en.TH, COL.TH], [en.KE, COL.KE]].forEach(([val, c]) => { ctx.beginPath(); ctx.arc(gx(Math.min(track.xmax, Math.max(track.xmin, skaterPos().x))), gy(val), 5.5, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke(); });
+    } else {
+      const win = 10, tMax = Math.max(win, S.t), tMin = tMax - win, gx = tt => l + (tt - tMin) / win * pw;
+      ctx.fillText('Time (s)', l + pw / 2, H - 4);
+      for (let s = Math.ceil(tMin / 2) * 2; s <= tMax; s += 2) { ctx.fillText(s, gx(s), H - 18); ctx.strokeStyle = 'rgba(0,0,0,.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gx(s), t); ctx.lineTo(gx(s), t + ph); ctx.stroke(); }
+      const line = (key, col) => { ctx.beginPath(); let first = true; tHist.forEach(p => { if (p.t < tMin) return; const px = gx(p.t), py = gy(p[key]); first ? (ctx.moveTo(px, py), first = false) : ctx.lineTo(px, py); }); ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke(); };
+      line('pe', COL.PE); line('ke', COL.KE); line('th', COL.TH);
+      ctx.setLineDash([7, 5]); ctx.strokeStyle = COL.E; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l, gy(S.E)); ctx.lineTo(l + pw, gy(S.E)); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  // hit the park floor: a hard fall (or flying off the ramp) gets a speech bubble
+  function onFloorLanding() {
+    if (!(S.fell || S.impact > 7)) return;
+    const pool = PHRASES.concat(PLANET_PHRASES[gravKey] || []); let i;
+    do { i = Math.floor(Math.random() * pool.length); } while (i === lastPhrase && pool.length > 1);
+    lastPhrase = i; S.fell = false;
+    crash = { text: pool[i], until: performance.now() + 9000, lie: (S.ax >= 0 ? 1 : -1) * 1.45 };
+  }
+
+  // ---------- main loop ----------
+  const H_STEP = 1 / 300;
+  function frame(ts) {
+    const dtReal = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0); lastTs = ts;
+    if (!paused && !dragging) {
+      acc += dtReal * (slow ? 0.25 : 1);
+      while (acc >= H_STEP) {
+        if (S.mode === 'track') {
+          const pv = S.v; Physics.step(S, track, P, H_STEP);
+          if (S.mode === 'track' && pv !== 0 && S.v === 0) apex = { x: S.x, h: track.hAt(S.x) };   // it just turned around: remember this spot
+          if (S.mode === 'air') airT = 0;                                                         // it flew off the end of the ramp
+        } else if (S.mode === 'air') {
+          airT += H_STEP;
+          const thBefore = S.TH, ev = Physics.stepAir(S, track, P, H_STEP);
+          if (ev === 'track') {
+            if (firstContactX === null) firstContactX = S.x;
+            if (S.TH - thBefore > 1 && S.TH - thBefore > 0.02 * S.E) toast = { text: 'Thump! The motion straight into the ramp turned into thermal energy.', until: performance.now() + 4000 };
+          } else if (ev === 'floor') onFloorLanding();
+        }
+        if (S.mode === 'track' || S.mode === 'air') S.t += H_STEP;
+        acc -= H_STEP;
+      }
+    }
+    const en = Physics.energies(S, track, P), scaleMax = P.m * P.g * (track.key === 'pendulum' ? track.maxY : Math.max(track.maxY, 10.5));
+    if (!paused && !dragging) {
+      if (S.mode === 'track') { hist.push({ x: S.x, ke: en.KE, th: en.TH }); if (hist.length > 1600) hist.shift(); }
+      if (S.mode === 'track' || S.mode === 'air') { tHist.push({ t: S.t, ke: en.KE, pe: en.PE, th: en.TH }); const old = S.t - 12; while (tHist.length && tHist[0].t < old) tHist.shift(); }
+    }
+    // challenge check
+    const fx = flagX();
+    if (fx !== null && !won && !dragging && S.mode === 'track' && firstContactX !== null && Math.abs(S.x - fx) < 0.4 && Math.abs(firstContactX - fx) > 2 && (S.t > 0.2)) {
+      won = true; const st = $('chStatus'); st.textContent = LEVELS[chIdx].win; st.className = 'win';
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const v = view(); for (let i = 0; i < 70; i++) confetti.push({ x: v.X(fx), y: v.Y(track.hAt(fx)) - 60, vx: (Math.random() - 0.5) * 7, vy: -Math.random() * 6 - 2, life: 90, c: ['#FFE066', '#FF6A2B', '#1FB36B', '#2F6FED', '#E63946'][i % 5] });
+      }
+    }
+    drawPark(); drawBars(en, scaleMax); drawGraph(en, scaleMax);
+    requestAnimationFrame(frame);
+  }
+
+  syncUI(); parkSkater(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
