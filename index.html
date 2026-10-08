@@ -612,7 +612,7 @@ if (typeof module !== 'undefined') module.exports = Physics;
     document.querySelectorAll('#trackSeg [data-track]').forEach(b => b.setAttribute('aria-pressed', b.dataset.track === track.key));
     document.querySelectorAll('#gravSeg [data-grav]').forEach(b => b.setAttribute('aria-pressed', b.dataset.grav === gravKey));
     $('fricOut').textContent = fricWord(P.mu); $('massOut').textContent = P.m + ' kg'; $('mass').value = P.m;
-    $('playBtn').textContent = paused ? 'Play' : 'Pause';
+    $('playBtn').textContent = paused ? 'Play (space)' : 'Pause (space)';
     $('slowBtn').setAttribute('aria-pressed', slow); $('lineBtn').setAttribute('aria-pressed', showLine); $('markBtn').setAttribute('aria-pressed', showMarks);
     $('chBtn').setAttribute('aria-pressed', chOn);
     $('rampBtn').hidden = track.key !== 'pendulum'; $('rampBtn').setAttribute('aria-pressed', showRamp);
@@ -766,6 +766,17 @@ if (typeof module !== 'undefined') module.exports = Physics;
   $('wSkip').addEventListener('click', () => { $('welcome').hidden = true; });
   $('skaterBtn').addEventListener('click', () => { $('welcome').hidden = false; });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopCam(); });
+
+  // space bar pauses and plays (not while the photo window is open or while typing)
+  const isSpace = e => e.code === 'Space' || e.key === ' ';
+  document.addEventListener('keydown', e => {
+    if (!isSpace(e)) return;
+    const tag = e.target && e.target.tagName;
+    if (!modal.hidden || tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type !== 'range')) return;
+    e.preventDefault();                                    // stops the page scrolling or a focused button clicking
+    if (!e.repeat) { paused = !paused; syncUI(); }
+  });
+  document.addEventListener('keyup', e => { if (isSpace(e) && modal.hidden) e.preventDefault(); });
 
   // ---------- drawing: park ----------
   // body width follows mass: slim at 20 kg, normal at 60 kg, wide at 100 kg
@@ -951,6 +962,11 @@ if (typeof module !== 'undefined') module.exports = Physics;
       ctx.save(); ctx.font = FONT(800, 13); const cap = 'Same idea: the ball follows a curved ramp. The energy works the same way.', cw = ctx.measureText(cap).width + 22;
       ctx.fillStyle = '#fff'; rr(ctx, 10, 10, Math.min(cw, W - 150), 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
       ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(cap, 21, 25); ctx.restore();
+    }
+    if (paused) {
+      ctx.save(); ctx.font = FONT(800, 13); const pt = 'Paused. Press the space bar to play.', pw = ctx.measureText(pt).width + 22;
+      ctx.fillStyle = '#FFE066'; rr(ctx, W - pw - 10, H - 46, pw, 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(pt, W - pw + 1, H - 31); ctx.restore();
     }
     if (toast && now < toast.until) {
       ctx.save(); ctx.font = FONT(800, 13); const tw = ctx.measureText(toast.text).width + 22; ctx.fillStyle = '#fff'; rr(ctx, 10, H - 46, Math.min(tw, W - 20), 30, 10); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
